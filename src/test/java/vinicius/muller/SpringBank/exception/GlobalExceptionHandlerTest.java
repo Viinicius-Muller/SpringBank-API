@@ -1,0 +1,100 @@
+package vinicius.muller.SpringBank.exception;
+
+import jakarta.validation.Validation;
+import jakarta.validation.Validator;
+import jakarta.validation.ValidatorFactory;
+import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Test;
+import org.springframework.core.MethodParameter;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ProblemDetail;
+import org.springframework.validation.BeanPropertyBindingResult;
+import org.springframework.validation.beanvalidation.SpringValidatorAdapter;
+import org.springframework.web.bind.MethodArgumentNotValidException;
+import vinicius.muller.SpringBank.dto.RegisterRequest;
+import vinicius.muller.SpringBank.dto.UpdateCredentialsRequest;
+
+import java.util.Map;
+
+import static org.assertj.core.api.Assertions.assertThat;
+
+class GlobalExceptionHandlerTest {
+
+    private static SpringValidatorAdapter validatorAdapter;
+    private static ValidatorFactory factory;
+
+    private final GlobalExceptionHandler handler = new GlobalExceptionHandler();
+
+    @BeforeAll
+    static void setUp() {
+        factory = Validation.buildDefaultValidatorFactory();
+        Validator validator = factory.getValidator();
+        validatorAdapter = new SpringValidatorAdapter(validator);
+    }
+
+    @AfterAll
+    static void tearDown() {
+        factory.close();
+    }
+
+    @Test
+    void reportsFieldErrorsAsBadRequest() {
+        var invalid = new RegisterRequest("  ", "not-an-email", "short");
+
+        ProblemDetail detail = handler.handleValidationFailure(exceptionFor(invalid));
+
+        assertThat(detail.getStatus()).isEqualTo(HttpStatus.BAD_REQUEST.value());
+        assertThat(detail.getDetail()).isEqualTo("Request validation failed");
+        assertThat(errorsOf(detail)).containsOnlyKeys("username", "email", "password");
+    }
+
+    // The @AssertTrue getter on the record has no matching field, so it must still be reported
+    @Test
+    void reportsAssertTrueGetterViolation() {
+        var invalid = new UpdateCredentialsRequest("current-password", null, null, null);
+
+        ProblemDetail detail = handler.handleValidationFailure(exceptionFor(invalid));
+
+        assertThat(errorsOf(detail))
+                .containsEntry("anyChangeRequested", "At least one new credential must be provided");
+    }
+
+    // Two constraints on one field must merge rather than blow up building the map
+    @Test
+    void mergesMultipleViolationsOnTheSameField() {
+        var invalid = new RegisterRequest("valid-name", "  ", "valid-password");
+
+        ProblemDetail detail = handler.handleValidationFailure(exceptionFor(invalid));
+
+        assertThat(errorsOf(detail).get("email")).contains(";");
+    }
+
+    @SuppressWarnings("unchecked")
+    private Map<String, String> errorsOf(ProblemDetail detail) {
+        return (Map<String, String>) detail.getProperties().get("errors");
+    }
+
+    private MethodArgumentNotValidException exceptionFor(Object target) {
+        var binding = new BeanPropertyBindingResult(target, "request");
+        validatorAdapter.validate(target, binding);
+
+        assertThat(binding.hasErrors())
+                .as("test fixture should produce violations")
+                .isTrue();
+
+        return new MethodArgumentNotValidException(parameterStub(), binding);
+    }
+
+    private MethodParameter parameterStub() {
+        try {
+            return new MethodParameter(getClass().getDeclaredMethod("stub", Object.class), 0);
+        } catch (NoSuchMethodException ex) {
+            throw new IllegalStateException(ex);
+        }
+    }
+
+    @SuppressWarnings("unused")
+    private void stub(Object body) {
+    }
+}
