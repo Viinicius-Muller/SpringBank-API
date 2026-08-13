@@ -3,6 +3,7 @@ package vinicius.muller.SpringBank.infra.security;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
@@ -17,7 +18,7 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
-import vinicius.muller.SpringBank.UserRepository;
+import vinicius.muller.SpringBank.repository.UserRepository;
 
 // Holds Password Encryption, CORS, Authentication
 @Configuration
@@ -39,6 +40,8 @@ public class SecurityConfig {
                 .formLogin(AbstractHttpConfigurer::disable)
                 .httpBasic(AbstractHttpConfigurer::disable)
                 .authorizeHttpRequests(auth -> auth
+                        // Must stay above the permitAll below - the first matching rule wins
+                        .requestMatchers(HttpMethod.PATCH, "/auth/credentials").authenticated()
                         .requestMatchers("/auth/**").permitAll()
                         .anyRequest().authenticated())
                 .exceptionHandling(ex -> ex

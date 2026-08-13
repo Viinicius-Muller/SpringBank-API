@@ -9,12 +9,17 @@ import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
-// Translates domain exceptions into API responses.
-// Note: this only covers what controllers and services throw - exceptions raised inside a
-// servlet filter never reach here, which is why SecurityFilter resolves failures itself.
+import java.time.LocalDateTime;
+
+// covers what controllers and services throw - exceptions
 @RestControllerAdvice
 @Slf4j
 public class GlobalExceptionHandler {
+
+    //  Spring ProblemDetail builder
+    private ProblemDetail problem(HttpStatus status, String detail) {
+        return ProblemDetail.forStatusAndDetail(status, detail);
+    }
 
     @ExceptionHandler(InactiveLoginException.class)
     ProblemDetail handleInactiveLogin(InactiveLoginException ex) {
@@ -27,14 +32,12 @@ public class GlobalExceptionHandler {
         return problem(HttpStatus.NOT_FOUND, "User not found");
     }
 
-    // Credential failures stay deliberately vague so they can't be used to enumerate accounts
     @ExceptionHandler({UsernameNotFoundException.class, BadCredentialsException.class})
     ProblemDetail handleBadCredentials(Exception ex) {
         log.warn("Failed authentication attempt");
         return problem(HttpStatus.UNAUTHORIZED, "Invalid credentials");
     }
 
-    // Must be declared explicitly, otherwise the catch-all below turns a 403 into a 500
     @ExceptionHandler(AccessDeniedException.class)
     ProblemDetail handleAccessDenied(AccessDeniedException ex) {
         return problem(HttpStatus.FORBIDDEN, "Access denied");
@@ -44,9 +47,5 @@ public class GlobalExceptionHandler {
     ProblemDetail handleUnexpected(Exception ex) {
         log.error("Unhandled exception", ex);
         return problem(HttpStatus.INTERNAL_SERVER_ERROR, "Unexpected error");
-    }
-
-    private ProblemDetail problem(HttpStatus status, String detail) {
-        return ProblemDetail.forStatusAndDetail(status, detail);
     }
 }

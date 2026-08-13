@@ -7,10 +7,8 @@ import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
-import vinicius.muller.SpringBank.UserRepository;
+import vinicius.muller.SpringBank.repository.UserRepository;
 import vinicius.muller.SpringBank.model.User;
-
-import java.util.ArrayList;
 
 @Service
 @RequiredArgsConstructor
@@ -29,9 +27,8 @@ public class CustomUserDetailsService implements UserDetailsService {
                 );
         log.info("Loading User authentication {}",user.getEmail());
 
-        return new org.springframework.security.core.userdetails.User(
-                user.getEmail(), // username
-                user.getPassword(), // password
-                new ArrayList<>()); // authorities
+        // The entity implements UserDetails, so returning it keeps the role authorities
+        // and the enabled flag that the provider's pre-auth checks rely on
+        return user;
     }
 }

@@ -9,7 +9,7 @@ import org.springframework.mock.web.MockHttpServletResponse;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.test.util.ReflectionTestUtils;
-import vinicius.muller.SpringBank.UserRepository;
+import vinicius.muller.SpringBank.repository.UserRepository;
 import vinicius.muller.SpringBank.model.Role;
 import vinicius.muller.SpringBank.model.User;
 

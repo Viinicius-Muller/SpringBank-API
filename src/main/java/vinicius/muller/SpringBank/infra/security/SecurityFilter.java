@@ -10,7 +10,7 @@ import org.springframework.security.core.context.SecurityContext;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
 import org.springframework.web.filter.OncePerRequestFilter;
-import vinicius.muller.SpringBank.UserRepository;
+import vinicius.muller.SpringBank.repository.UserRepository;
 import vinicius.muller.SpringBank.model.User;
 
 import java.io.IOException;
