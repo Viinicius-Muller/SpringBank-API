@@ -7,6 +7,7 @@ import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
+import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
@@ -23,13 +24,13 @@ import vinicius.muller.SpringBank.repository.UserRepository;
 // Holds Password Encryption, CORS, Authentication
 @Configuration
 @EnableWebSecurity
+@EnableMethodSecurity
 @RequiredArgsConstructor
 public class SecurityConfig {
 
     private final TokenService tokenService;
     private final UserRepository userRepository;
     private final RestAuthenticationEntryPoint authenticationEntryPoint; // Unauthenticated Calls
-    private final RestAccessDeniedHandler accessDeniedHandler; // Authenticated-Forbidden Calls
 
     @Bean
     SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
@@ -40,13 +41,10 @@ public class SecurityConfig {
                 .formLogin(AbstractHttpConfigurer::disable)
                 .httpBasic(AbstractHttpConfigurer::disable)
                 .authorizeHttpRequests(auth -> auth
-                        // Must stay above the permitAll below - the first matching rule wins
-                        .requestMatchers(HttpMethod.PATCH, "/auth/credentials").authenticated()
-                        .requestMatchers("/auth/**").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/auth/register", "/auth/login").permitAll()
                         .anyRequest().authenticated())
                 .exceptionHandling(ex -> ex
-                        .authenticationEntryPoint(authenticationEntryPoint)
-                        .accessDeniedHandler(accessDeniedHandler))
+                        .authenticationEntryPoint(authenticationEntryPoint))
                 .addFilterBefore(new SecurityFilter(tokenService, userRepository),
                         UsernamePasswordAuthenticationFilter.class)
                 .build();
