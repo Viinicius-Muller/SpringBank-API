@@ -33,7 +33,7 @@ public class Account extends AuditBase {
     @Column(nullable = false)
     private Boolean active = true;
 
-    public boolean isPinCorrect(String rawPin, PasswordEncoder passwordEncoder) {
-        return passwordEncoder.matches(rawPin, this.pinHash);
+    public boolean isPinCorrect(String rawPin, PasswordEncoder pinEncoder) {
+        return pinEncoder.matches(rawPin, this.pinHash);
     }
 }

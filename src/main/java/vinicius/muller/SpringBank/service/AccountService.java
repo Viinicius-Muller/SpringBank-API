@@ -2,6 +2,7 @@ package vinicius.muller.SpringBank.service;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -22,7 +23,9 @@ import vinicius.muller.SpringBank.repository.AccountRepository;
 @Transactional(readOnly = true)
 public class AccountService {
     private final AccountRepository accountRepository;
-    private final PasswordEncoder passwordEncoder;
+
+    @Qualifier("pinEncoder")
+    private final PasswordEncoder pinEncoder;
 
     @Transactional
     public AccountResponse createAccount(CreateAccountRequest createDTO) {
@@ -33,7 +36,7 @@ public class AccountService {
 
         Account account = new Account();
         account.setUser(caller);
-        account.setPinHash(passwordEncoder.encode(createDTO.pin()));
+        account.setPinHash(pinEncoder.encode(createDTO.pin()));
 
         accountRepository.save(account);
         return new AccountResponse(account);
@@ -47,7 +50,7 @@ public class AccountService {
     public void deleteAccount(DeleteAccountRequest deleteDTO) {
         Account account = callerAccount();
 
-        if (!account.isPinCorrect(deleteDTO.pin(), passwordEncoder))
+        if (!account.isPinCorrect(deleteDTO.pin(), pinEncoder))
             throw new IncorrectCredentialsException("PIN is incorrect");
 
         account.setActive(false);

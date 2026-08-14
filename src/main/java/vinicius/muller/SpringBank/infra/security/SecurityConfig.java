@@ -1,8 +1,10 @@
 package vinicius.muller.SpringBank.infra.security;
 
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Primary;
 import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.config.Customizer;
@@ -27,6 +29,8 @@ import vinicius.muller.SpringBank.repository.UserRepository;
 @EnableMethodSecurity
 @RequiredArgsConstructor
 public class SecurityConfig {
+
+    private static final int PIN_ENCODER_STRENGTH = 12;
 
     private final TokenService tokenService;
     private final UserRepository userRepository;
@@ -58,8 +62,14 @@ public class SecurityConfig {
     }
 
     @Bean
+    @Primary // Default for anything injecting PasswordEncoder unqualified (user passwords)
     PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder();
+    }
+
+    @Bean("pinEncoder") // PINs (4-6 digits) get a custom encoder for more strenght
+    PasswordEncoder pinEncoder(@Value("${app.security.pin.pepper}") String pepper) {
+        return new CustomPinEncoder(new BCryptPasswordEncoder(PIN_ENCODER_STRENGTH), pepper);
     }
 
     @Bean // Used by the login flow to verify credentials against CustomUserDetailsService
