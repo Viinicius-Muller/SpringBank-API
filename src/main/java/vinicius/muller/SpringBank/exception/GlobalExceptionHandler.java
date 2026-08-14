@@ -34,6 +34,11 @@ public class GlobalExceptionHandler {
         return problem(HttpStatus.NOT_FOUND, "User not found");
     }
 
+    @ExceptionHandler(AccountNotFoundException.class)
+    ProblemDetail handleAccountNotFound(AccountNotFoundException ex) {
+        return problem(HttpStatus.NOT_FOUND, "Account not found");
+    }
+
     // Stays vague on purpose, so a wrong password and an unknown e-mail look identical
     @ExceptionHandler({UsernameNotFoundException.class, BadCredentialsException.class,
             IncorrectCredentialsException.class})

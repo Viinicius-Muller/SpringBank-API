@@ -2,7 +2,6 @@ package vinicius.muller.SpringBank.service;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -14,6 +13,7 @@ import vinicius.muller.SpringBank.dto.UpdateCredentialsRequest;
 import vinicius.muller.SpringBank.exception.AlreadyRegisteredException;
 import vinicius.muller.SpringBank.exception.IncorrectCredentialsException;
 import vinicius.muller.SpringBank.exception.UserNotFoundByEmail;
+import vinicius.muller.SpringBank.utils.SecurityUtils;
 import vinicius.muller.SpringBank.infra.security.TokenService;
 import vinicius.muller.SpringBank.model.User;
 import vinicius.muller.SpringBank.repository.UserRepository;
@@ -92,13 +92,7 @@ public class AuthService {
         return new AuthResponse(tokenService.generateToken(user), user);
     }
 
-    // gets user authentication from SecurityContext
     private User authenticatedUser() {
-        var authentication = SecurityContextHolder.getContext().getAuthentication();
-
-        if (authentication == null || !(authentication.getPrincipal() instanceof User user))
-            throw new IncorrectCredentialsException("No authenticated caller");
-
-        return user;
+        return SecurityUtils.authenticatedUser();
     }
 }
