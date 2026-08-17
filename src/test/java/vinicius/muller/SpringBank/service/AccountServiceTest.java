@@ -10,8 +10,8 @@ import org.springframework.security.core.authority.AuthorityUtils;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
-import vinicius.muller.SpringBank.dto.CreateAccountRequest;
-import vinicius.muller.SpringBank.dto.DeleteAccountRequest;
+import vinicius.muller.SpringBank.dto.CreateAccountRequestDTO;
+import vinicius.muller.SpringBank.dto.DeleteAccountRequestDTO;
 import vinicius.muller.SpringBank.exception.AccountNotFoundException;
 import vinicius.muller.SpringBank.exception.AlreadyRegisteredException;
 import vinicius.muller.SpringBank.exception.IncorrectCredentialsException;
@@ -77,7 +77,7 @@ class AccountServiceTest {
     void createsAccountWithEncodedPinAndZeroBalance() {
         when(accountRepository.existsByUserId(user.getId())).thenReturn(false);
 
-        var response = accountService.createAccount(new CreateAccountRequest(PIN));
+        var response = accountService.createAccount(new CreateAccountRequestDTO(PIN));
 
         assertThat(response.username()).isEqualTo(USERNAME);
         assertThat(response.email()).isEqualTo(EMAIL);
@@ -89,7 +89,7 @@ class AccountServiceTest {
     void neverStoresPinInPlainText() {
         when(accountRepository.existsByUserId(user.getId())).thenReturn(false);
 
-        accountService.createAccount(new CreateAccountRequest(PIN));
+        accountService.createAccount(new CreateAccountRequestDTO(PIN));
 
         var saved = ArgumentCaptor.forClass(Account.class);
         verify(accountRepository).save(saved.capture());
@@ -102,7 +102,7 @@ class AccountServiceTest {
     void rejectsSecondAccountForSameUser() {
         when(accountRepository.existsByUserId(user.getId())).thenReturn(true);
 
-        assertThatThrownBy(() -> accountService.createAccount(new CreateAccountRequest(PIN)))
+        assertThatThrownBy(() -> accountService.createAccount(new CreateAccountRequestDTO(PIN)))
                 .isInstanceOf(AlreadyRegisteredException.class);
 
         verify(accountRepository, never()).save(any(Account.class));
@@ -130,7 +130,7 @@ class AccountServiceTest {
     void deactivatesAccountOnCorrectPin() {
         when(accountRepository.findByUserId(user.getId())).thenReturn(Optional.of(account));
 
-        accountService.deleteAccount(new DeleteAccountRequest(PIN));
+        accountService.deleteAccount(new DeleteAccountRequestDTO(PIN));
 
         assertThat(account.getActive()).isFalse();
         verify(accountRepository).save(account);
@@ -140,7 +140,7 @@ class AccountServiceTest {
     void rejectsDeleteOnWrongPin() {
         when(accountRepository.findByUserId(user.getId())).thenReturn(Optional.of(account));
 
-        assertThatThrownBy(() -> accountService.deleteAccount(new DeleteAccountRequest("0000")))
+        assertThatThrownBy(() -> accountService.deleteAccount(new DeleteAccountRequestDTO("0000")))
                 .isInstanceOf(IncorrectCredentialsException.class);
 
         assertThat(account.getActive()).isTrue();
@@ -153,7 +153,7 @@ class AccountServiceTest {
                 new AnonymousAuthenticationToken("key", "anonymousUser",
                         AuthorityUtils.createAuthorityList("ROLE_ANONYMOUS")));
 
-        assertThatThrownBy(() -> accountService.createAccount(new CreateAccountRequest(PIN)))
+        assertThatThrownBy(() -> accountService.createAccount(new CreateAccountRequestDTO(PIN)))
                 .isInstanceOf(IncorrectCredentialsException.class);
 
         assertThatThrownBy(() -> accountService.getMyAccount())

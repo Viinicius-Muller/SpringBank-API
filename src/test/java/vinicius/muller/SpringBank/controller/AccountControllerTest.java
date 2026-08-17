@@ -9,9 +9,9 @@ import org.springframework.context.annotation.FilterType;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
-import vinicius.muller.SpringBank.dto.AccountResponse;
-import vinicius.muller.SpringBank.dto.CreateAccountRequest;
-import vinicius.muller.SpringBank.dto.DeleteAccountRequest;
+import vinicius.muller.SpringBank.dto.AccountResponseDTO;
+import vinicius.muller.SpringBank.dto.CreateAccountRequestDTO;
+import vinicius.muller.SpringBank.dto.DeleteAccountRequestDTO;
 import vinicius.muller.SpringBank.exception.AccountNotFoundException;
 import vinicius.muller.SpringBank.exception.AlreadyRegisteredException;
 import vinicius.muller.SpringBank.exception.IncorrectCredentialsException;
@@ -55,16 +55,16 @@ class AccountControllerTest {
     @Autowired
     private ObjectMapper objectMapper;
 
-    private final AccountResponse response =
-            new AccountResponse(10L, USERNAME, EMAIL, BigDecimal.ZERO, true);
+    private final AccountResponseDTO response =
+            new AccountResponseDTO(10L, USERNAME, EMAIL, BigDecimal.ZERO, true);
 
     @Test
     void createReturnsCreatedWithAccount() throws Exception {
-        when(accountService.createAccount(any(CreateAccountRequest.class))).thenReturn(response);
+        when(accountService.createAccount(any(CreateAccountRequestDTO.class))).thenReturn(response);
 
         mockMvc.perform(post("/accounts")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(json(new CreateAccountRequest(PIN))))
+                        .content(json(new CreateAccountRequestDTO(PIN))))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.id").value(10))
                 .andExpect(jsonPath("$.username").value(USERNAME))
@@ -75,21 +75,21 @@ class AccountControllerTest {
     void createRejectsMalformedPin() throws Exception {
         mockMvc.perform(post("/accounts")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(json(new CreateAccountRequest("12a"))))
+                        .content(json(new CreateAccountRequestDTO("12a"))))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.errors.pin").exists());
 
-        verify(accountService, never()).createAccount(any(CreateAccountRequest.class));
+        verify(accountService, never()).createAccount(any(CreateAccountRequestDTO.class));
     }
 
     @Test
     void createReturnsConflictWhenAccountExists() throws Exception {
-        when(accountService.createAccount(any(CreateAccountRequest.class)))
+        when(accountService.createAccount(any(CreateAccountRequestDTO.class)))
                 .thenThrow(new AlreadyRegisteredException("User already has an Account"));
 
         mockMvc.perform(post("/accounts")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(json(new CreateAccountRequest(PIN))))
+                        .content(json(new CreateAccountRequestDTO(PIN))))
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.detail").value("User already has an Account"));
     }
@@ -116,7 +116,7 @@ class AccountControllerTest {
 
     @Test
     void deleteReturnsNoContent() throws Exception {
-        var request = new DeleteAccountRequest(PIN);
+        var request = new DeleteAccountRequestDTO(PIN);
 
         mockMvc.perform(delete("/accounts")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -129,11 +129,11 @@ class AccountControllerTest {
     @Test
     void deleteReturnsUnauthorizedOnWrongPin() throws Exception {
         doThrow(new IncorrectCredentialsException("PIN is incorrect"))
-                .when(accountService).deleteAccount(any(DeleteAccountRequest.class));
+                .when(accountService).deleteAccount(any(DeleteAccountRequestDTO.class));
 
         mockMvc.perform(delete("/accounts")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(json(new DeleteAccountRequest("0000"))))
+                        .content(json(new DeleteAccountRequestDTO("0000"))))
                 .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.detail").value("Invalid credentials"));
     }
@@ -142,11 +142,11 @@ class AccountControllerTest {
     void deleteRejectsBlankPin() throws Exception {
         mockMvc.perform(delete("/accounts")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(json(new DeleteAccountRequest("   "))))
+                        .content(json(new DeleteAccountRequestDTO("   "))))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.errors.pin").exists());
 
-        verify(accountService, never()).deleteAccount(any(DeleteAccountRequest.class));
+        verify(accountService, never()).deleteAccount(any(DeleteAccountRequestDTO.class));
     }
 
     private String json(Object body) throws Exception {

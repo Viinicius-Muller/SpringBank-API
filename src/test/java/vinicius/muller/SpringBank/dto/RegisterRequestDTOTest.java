@@ -9,7 +9,7 @@ import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-class RegisterRequestTest {
+class RegisterRequestDTOTest {
 
     private static final String USERNAME = "vinicius";
     private static final String EMAIL = "vinicius@springbank.dev";
@@ -31,14 +31,14 @@ class RegisterRequestTest {
 
     @Test
     void acceptsValidPayload() {
-        var request = new RegisterRequest(USERNAME, EMAIL, PASSWORD);
+        var request = new RegisterRequestDTO(USERNAME, EMAIL, PASSWORD);
 
         assertThat(validator.validate(request)).isEmpty();
     }
 
     @Test
     void rejectsBlankUsername() {
-        var request = new RegisterRequest("   ", EMAIL, PASSWORD);
+        var request = new RegisterRequestDTO("   ", EMAIL, PASSWORD);
 
         assertThat(validator.validate(request))
                 .extracting(violation -> violation.getPropertyPath().toString())
@@ -47,7 +47,7 @@ class RegisterRequestTest {
 
     @Test
     void rejectsMalformedEmail() {
-        var request = new RegisterRequest(USERNAME, "not-an-email", PASSWORD);
+        var request = new RegisterRequestDTO(USERNAME, "not-an-email", PASSWORD);
 
         assertThat(validator.validate(request))
                 .extracting(violation -> violation.getPropertyPath().toString())
@@ -56,7 +56,7 @@ class RegisterRequestTest {
 
     @Test
     void rejectsShortPassword() {
-        var request = new RegisterRequest(USERNAME, EMAIL, "1234567");
+        var request = new RegisterRequestDTO(USERNAME, EMAIL, "1234567");
 
         assertThat(validator.validate(request))
                 .extracting(violation -> violation.getPropertyPath().toString())
@@ -65,7 +65,7 @@ class RegisterRequestTest {
 
     @Test
     void rejectsUsernameLongerThanColumn() {
-        var request = new RegisterRequest("v".repeat(51), EMAIL, PASSWORD);
+        var request = new RegisterRequestDTO("v".repeat(51), EMAIL, PASSWORD);
 
         assertThat(validator.validate(request))
                 .extracting(violation -> violation.getPropertyPath().toString())

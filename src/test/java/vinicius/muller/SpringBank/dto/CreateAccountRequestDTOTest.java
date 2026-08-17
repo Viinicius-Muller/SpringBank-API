@@ -11,7 +11,7 @@ import org.junit.jupiter.params.provider.ValueSource;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-class CreateAccountRequestTest {
+class CreateAccountRequestDTOTest {
 
     private static ValidatorFactory factory;
     private static Validator validator;
@@ -30,7 +30,7 @@ class CreateAccountRequestTest {
     @ParameterizedTest
     @ValueSource(strings = {"1234", "12345", "123456"})
     void acceptsPinBetweenFourAndSixDigits(String pin) {
-        var request = new CreateAccountRequest(pin);
+        var request = new CreateAccountRequestDTO(pin);
 
         assertThat(validator.validate(request)).isEmpty();
     }
@@ -38,7 +38,7 @@ class CreateAccountRequestTest {
     @ParameterizedTest
     @ValueSource(strings = {"123", "1234567", "12a4", "12 4", ""})
     void rejectsMalformedPin(String pin) {
-        var request = new CreateAccountRequest(pin);
+        var request = new CreateAccountRequestDTO(pin);
 
         assertThat(validator.validate(request))
                 .extracting(violation -> violation.getPropertyPath().toString())
@@ -47,7 +47,7 @@ class CreateAccountRequestTest {
 
     @Test
     void rejectsBlankPin() {
-        var request = new CreateAccountRequest("    ");
+        var request = new CreateAccountRequestDTO("    ");
 
         assertThat(validator.validate(request))
                 .extracting(violation -> violation.getPropertyPath().toString())
@@ -56,7 +56,7 @@ class CreateAccountRequestTest {
 
     @Test
     void rejectsNullPin() {
-        var request = new CreateAccountRequest(null);
+        var request = new CreateAccountRequestDTO(null);
 
         assertThat(validator.validate(request))
                 .extracting(violation -> violation.getPropertyPath().toString())

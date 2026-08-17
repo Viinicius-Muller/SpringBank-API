@@ -9,7 +9,7 @@ import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-class UpdateCredentialsRequestTest {
+class UpdateCredentialsRequestDTOTest {
 
     private static final String CURRENT_PASSWORD = "sup3r-secret";
 
@@ -29,14 +29,14 @@ class UpdateCredentialsRequestTest {
 
     @Test
     void acceptsPartialUpdate() {
-        var request = new UpdateCredentialsRequest(CURRENT_PASSWORD, null, null, "n3w-password");
+        var request = new UpdateCredentialsRequestDTO(CURRENT_PASSWORD, null, null, "n3w-password");
 
         assertThat(validator.validate(request)).isEmpty();
     }
 
     @Test
     void rejectsUpdateWithNothingToChange() {
-        var request = new UpdateCredentialsRequest(CURRENT_PASSWORD, null, null, null);
+        var request = new UpdateCredentialsRequestDTO(CURRENT_PASSWORD, null, null, null);
 
         assertThat(validator.validate(request))
                 .extracting(violation -> violation.getPropertyPath().toString())
@@ -45,7 +45,7 @@ class UpdateCredentialsRequestTest {
 
     @Test
     void rejectsBlankCurrentPassword() {
-        var request = new UpdateCredentialsRequest("   ", null, null, "n3w-password");
+        var request = new UpdateCredentialsRequestDTO("   ", null, null, "n3w-password");
 
         assertThat(validator.validate(request))
                 .extracting(violation -> violation.getPropertyPath().toString())
@@ -54,7 +54,7 @@ class UpdateCredentialsRequestTest {
 
     @Test
     void rejectsMalformedNewEmail() {
-        var request = new UpdateCredentialsRequest(CURRENT_PASSWORD, null, "not-an-email", null);
+        var request = new UpdateCredentialsRequestDTO(CURRENT_PASSWORD, null, "not-an-email", null);
 
         assertThat(validator.validate(request))
                 .extracting(violation -> violation.getPropertyPath().toString())
@@ -63,7 +63,7 @@ class UpdateCredentialsRequestTest {
 
     @Test
     void rejectsShortNewPassword() {
-        var request = new UpdateCredentialsRequest(CURRENT_PASSWORD, null, null, "1234567");
+        var request = new UpdateCredentialsRequestDTO(CURRENT_PASSWORD, null, null, "1234567");
 
         assertThat(validator.validate(request))
                 .extracting(violation -> violation.getPropertyPath().toString())

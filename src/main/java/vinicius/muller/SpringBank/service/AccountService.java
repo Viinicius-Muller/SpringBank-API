@@ -3,15 +3,18 @@ package vinicius.muller.SpringBank.service;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.data.jpa.repository.config.EnableJpaAuditing;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import vinicius.muller.SpringBank.dto.AccountResponse;
-import vinicius.muller.SpringBank.dto.CreateAccountRequest;
-import vinicius.muller.SpringBank.dto.DeleteAccountRequest;
+import vinicius.muller.SpringBank.dto.AccountResponseDTO;
+import vinicius.muller.SpringBank.dto.CreateAccountRequestDTO;
+import vinicius.muller.SpringBank.dto.DeleteAccountRequestDTO;
 import vinicius.muller.SpringBank.exception.AccountNotFoundException;
 import vinicius.muller.SpringBank.exception.AlreadyRegisteredException;
 import vinicius.muller.SpringBank.exception.IncorrectCredentialsException;
+import vinicius.muller.SpringBank.utils.AccountNumberGenerator;
 import vinicius.muller.SpringBank.utils.SecurityUtils;
 import vinicius.muller.SpringBank.model.Account;
 import vinicius.muller.SpringBank.model.User;
@@ -23,12 +26,13 @@ import vinicius.muller.SpringBank.repository.AccountRepository;
 @Transactional(readOnly = true)
 public class AccountService {
     private final AccountRepository accountRepository;
+    private final AccountNumberGenerator accountNumberGenerator;
 
-    @Qualifier("pinEncoder")
+    @Qualifier("pinEncoder") // use pinEncoder bean instead of default
     private final PasswordEncoder pinEncoder;
 
     @Transactional
-    public AccountResponse createAccount(CreateAccountRequest createDTO) {
+    public AccountResponseDTO createAccount(CreateAccountRequestDTO createDTO) {
         User caller = SecurityUtils.authenticatedUser();
 
         if (accountRepository.existsByUserId(caller.getId()))
@@ -38,16 +42,34 @@ public class AccountService {
         account.setUser(caller);
         account.setPinHash(pinEncoder.encode(createDTO.pin()));
 
-        accountRepository.save(account);
-        return new AccountResponse(account);
+        // Try creating account number up to 5 times
+        for (int i = 0; i < 5; i++) {
+            String generatedAccNumber = accountNumberGenerator.genNumber(caller.getId());
+            try {
+                account.setAccountNumber(generatedAccNumber);
+                accountRepository.save(account);
+            } catch (DataIntegrityViolationException ex) {
+                // max attempt reached and wasn't successful
+                if (i == 4) {
+                    log.error("Reached maximum generator attempts");
+
+                    account.setId(null);
+                    account.setAccountNumber(null);
+                    return null;
+                }
+                log.error("Not unique value: {}",generatedAccNumber);
+            }
+        }
+
+        return new AccountResponseDTO(account);
     }
 
-    public AccountResponse getMyAccount() {
-        return new AccountResponse(callerAccount());
+    public AccountResponseDTO getMyAccount() {
+        return new AccountResponseDTO(callerAccount());
     }
 
     @Transactional
-    public void deleteAccount(DeleteAccountRequest deleteDTO) {
+    public void deleteAccount(DeleteAccountRequestDTO deleteDTO) {
         Account account = callerAccount();
 
         if (!account.isPinCorrect(deleteDTO.pin(), pinEncoder))

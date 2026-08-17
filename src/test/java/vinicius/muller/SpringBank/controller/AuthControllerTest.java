@@ -9,10 +9,10 @@ import org.springframework.context.annotation.FilterType;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
-import vinicius.muller.SpringBank.dto.AuthResponse;
-import vinicius.muller.SpringBank.dto.LoginRequest;
-import vinicius.muller.SpringBank.dto.RegisterRequest;
-import vinicius.muller.SpringBank.dto.UpdateCredentialsRequest;
+import vinicius.muller.SpringBank.dto.AuthResponseDTO;
+import vinicius.muller.SpringBank.dto.LoginRequestDTO;
+import vinicius.muller.SpringBank.dto.RegisterRequestDTO;
+import vinicius.muller.SpringBank.dto.UpdateCredentialsRequestDTO;
 import vinicius.muller.SpringBank.exception.AlreadyRegisteredException;
 import vinicius.muller.SpringBank.exception.IncorrectCredentialsException;
 import vinicius.muller.SpringBank.infra.security.SecurityConfig;
@@ -55,15 +55,15 @@ class AuthControllerTest {
     @Autowired
     private ObjectMapper objectMapper;
 
-    private final AuthResponse response = new AuthResponse(TOKEN, USERNAME, EMAIL, Role.MEMBER);
+    private final AuthResponseDTO response = new AuthResponseDTO(TOKEN, USERNAME, EMAIL, Role.MEMBER);
 
     @Test
     void registerReturnsCreatedWithToken() throws Exception {
-        when(authService.registerUser(any(RegisterRequest.class))).thenReturn(response);
+        when(authService.registerUser(any(RegisterRequestDTO.class))).thenReturn(response);
 
         mockMvc.perform(post("/auth/register")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(json(new RegisterRequest(USERNAME, EMAIL, PASSWORD))))
+                        .content(json(new RegisterRequestDTO(USERNAME, EMAIL, PASSWORD))))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.token").value(TOKEN))
                 .andExpect(jsonPath("$.role").value("MEMBER"));
@@ -73,7 +73,7 @@ class AuthControllerTest {
     void registerRejectsInvalidPayload() throws Exception {
         mockMvc.perform(post("/auth/register")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(json(new RegisterRequest("  ", "not-an-email", PASSWORD))))
+                        .content(json(new RegisterRequestDTO("  ", "not-an-email", PASSWORD))))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.errors.username").exists())
                 .andExpect(jsonPath("$.errors.email").exists());
@@ -81,23 +81,23 @@ class AuthControllerTest {
 
     @Test
     void registerReturnsConflictOnDuplicate() throws Exception {
-        when(authService.registerUser(any(RegisterRequest.class)))
+        when(authService.registerUser(any(RegisterRequestDTO.class)))
                 .thenThrow(new AlreadyRegisteredException("E-mail already belongs to an Account"));
 
         mockMvc.perform(post("/auth/register")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(json(new RegisterRequest(USERNAME, EMAIL, PASSWORD))))
+                        .content(json(new RegisterRequestDTO(USERNAME, EMAIL, PASSWORD))))
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.detail").value("E-mail already belongs to an Account"));
     }
 
     @Test
     void loginReturnsOkWithToken() throws Exception {
-        when(authService.loginUser(any(LoginRequest.class))).thenReturn(response);
+        when(authService.loginUser(any(LoginRequestDTO.class))).thenReturn(response);
 
         mockMvc.perform(post("/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(json(new LoginRequest(EMAIL, PASSWORD))))
+                        .content(json(new LoginRequestDTO(EMAIL, PASSWORD))))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.token").value(TOKEN));
     }
@@ -105,20 +105,20 @@ class AuthControllerTest {
     // The vague wording matters - it must not leak whether the e-mail exists
     @Test
     void loginReturnsUnauthorizedOnBadCredentials() throws Exception {
-        when(authService.loginUser(any(LoginRequest.class)))
+        when(authService.loginUser(any(LoginRequestDTO.class)))
                 .thenThrow(new IncorrectCredentialsException("E-mail or password are incorrect"));
 
         mockMvc.perform(post("/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(json(new LoginRequest(EMAIL, PASSWORD))))
+                        .content(json(new LoginRequestDTO(EMAIL, PASSWORD))))
                 .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.detail").value("Invalid credentials"));
     }
 
     @Test
     void updateCredentialsReturnsOkWithFreshToken() throws Exception {
-        when(authService.updateCredentials(any(UpdateCredentialsRequest.class))).thenReturn(response);
-        var request = new UpdateCredentialsRequest(PASSWORD, null, null, "n3w-password");
+        when(authService.updateCredentials(any(UpdateCredentialsRequestDTO.class))).thenReturn(response);
+        var request = new UpdateCredentialsRequestDTO(PASSWORD, null, null, "n3w-password");
 
         mockMvc.perform(patch("/auth/credentials")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -131,7 +131,7 @@ class AuthControllerTest {
 
     @Test
     void updateCredentialsRejectsRequestWithNothingToChange() throws Exception {
-        var request = new UpdateCredentialsRequest(PASSWORD, null, null, null);
+        var request = new UpdateCredentialsRequestDTO(PASSWORD, null, null, null);
 
         mockMvc.perform(patch("/auth/credentials")
                         .contentType(MediaType.APPLICATION_JSON)

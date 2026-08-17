@@ -12,8 +12,8 @@ import org.springframework.http.ProblemDetail;
 import org.springframework.validation.BeanPropertyBindingResult;
 import org.springframework.validation.beanvalidation.SpringValidatorAdapter;
 import org.springframework.web.bind.MethodArgumentNotValidException;
-import vinicius.muller.SpringBank.dto.RegisterRequest;
-import vinicius.muller.SpringBank.dto.UpdateCredentialsRequest;
+import vinicius.muller.SpringBank.dto.RegisterRequestDTO;
+import vinicius.muller.SpringBank.dto.UpdateCredentialsRequestDTO;
 
 import java.util.Map;
 
@@ -40,7 +40,7 @@ class GlobalExceptionHandlerTest {
 
     @Test
     void reportsFieldErrorsAsBadRequest() {
-        var invalid = new RegisterRequest("  ", "not-an-email", "short");
+        var invalid = new RegisterRequestDTO("  ", "not-an-email", "short");
 
         ProblemDetail detail = handler.handleValidationFailure(exceptionFor(invalid));
 
@@ -52,7 +52,7 @@ class GlobalExceptionHandlerTest {
     // The @AssertTrue getter on the record has no matching field, so it must still be reported
     @Test
     void reportsAssertTrueGetterViolation() {
-        var invalid = new UpdateCredentialsRequest("current-password", null, null, null);
+        var invalid = new UpdateCredentialsRequestDTO("current-password", null, null, null);
 
         ProblemDetail detail = handler.handleValidationFailure(exceptionFor(invalid));
 
@@ -63,7 +63,7 @@ class GlobalExceptionHandlerTest {
     // Two constraints on one field must merge rather than blow up building the map
     @Test
     void mergesMultipleViolationsOnTheSameField() {
-        var invalid = new RegisterRequest("valid-name", "  ", "valid-password");
+        var invalid = new RegisterRequestDTO("valid-name", "  ", "valid-password");
 
         ProblemDetail detail = handler.handleValidationFailure(exceptionFor(invalid));
 

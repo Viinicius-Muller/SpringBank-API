@@ -11,11 +11,16 @@ import vinicius.muller.SpringBank.repository.TransferRepository;
 @Service
 @RequiredArgsConstructor
 @Slf4j
-@Transactional
+@Transactional(readOnly = true)
 public class TransferService {
 
     private final TransferRepository transferRepository;
 
     @Qualifier("pinEncoder") // use pinEncoder bean instead of default
     private final PasswordEncoder pinEncoder;
+
+    /*@Transactional
+    public TransferResponseDTO createTransfer(TransferRequestDTO dto, String senderAccNumber) {
+
+    }*/
 }

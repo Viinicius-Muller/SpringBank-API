@@ -10,7 +10,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.util.ReflectionTestUtils;
-import vinicius.muller.SpringBank.dto.UpdateCredentialsRequest;
+import vinicius.muller.SpringBank.dto.UpdateCredentialsRequestDTO;
 import vinicius.muller.SpringBank.exception.AlreadyRegisteredException;
 import vinicius.muller.SpringBank.exception.IncorrectCredentialsException;
 import vinicius.muller.SpringBank.exception.UserNotFoundByEmail;
@@ -76,7 +76,7 @@ class AuthServiceTest {
 
     @Test
     void updatesPasswordAndReturnsFreshToken() {
-        var request = new UpdateCredentialsRequest(PASSWORD, null, null, "n3w-password");
+        var request = new UpdateCredentialsRequestDTO(PASSWORD, null, null, "n3w-password");
 
         var response = authService.updateCredentials(request);
 
@@ -89,7 +89,7 @@ class AuthServiceTest {
     void updatesUsernameAndEmail() {
         when(userRepository.existsByUsername("newname")).thenReturn(false);
         when(userRepository.existsByEmail("new@springbank.dev")).thenReturn(false);
-        var request = new UpdateCredentialsRequest(PASSWORD, "newname", "new@springbank.dev", null);
+        var request = new UpdateCredentialsRequestDTO(PASSWORD, "newname", "new@springbank.dev", null);
 
         var response = authService.updateCredentials(request);
 
@@ -100,7 +100,7 @@ class AuthServiceTest {
 
     @Test
     void rejectsWrongCurrentPassword() {
-        var request = new UpdateCredentialsRequest("wrong-password", null, null, "n3w-password");
+        var request = new UpdateCredentialsRequestDTO("wrong-password", null, null, "n3w-password");
 
         assertThatThrownBy(() -> authService.updateCredentials(request))
                 .isInstanceOf(IncorrectCredentialsException.class);
@@ -111,7 +111,7 @@ class AuthServiceTest {
     @Test
     void rejectsUsernameTakenByAnotherAccount() {
         when(userRepository.existsByUsername("taken")).thenReturn(true);
-        var request = new UpdateCredentialsRequest(PASSWORD, "taken", null, null);
+        var request = new UpdateCredentialsRequestDTO(PASSWORD, "taken", null, null);
 
         assertThatThrownBy(() -> authService.updateCredentials(request))
                 .isInstanceOf(AlreadyRegisteredException.class);
@@ -120,7 +120,7 @@ class AuthServiceTest {
     @Test
     void rejectsEmailTakenByAnotherAccount() {
         when(userRepository.existsByEmail("taken@springbank.dev")).thenReturn(true);
-        var request = new UpdateCredentialsRequest(PASSWORD, null, "taken@springbank.dev", null);
+        var request = new UpdateCredentialsRequestDTO(PASSWORD, null, "taken@springbank.dev", null);
 
         assertThatThrownBy(() -> authService.updateCredentials(request))
                 .isInstanceOf(AlreadyRegisteredException.class);
@@ -129,7 +129,7 @@ class AuthServiceTest {
     // Resubmitting your own unchanged values must not collide with yourself
     @Test
     void allowsResubmittingOwnUsernameAndEmail() {
-        var request = new UpdateCredentialsRequest(PASSWORD, USERNAME, EMAIL, "n3w-password");
+        var request = new UpdateCredentialsRequestDTO(PASSWORD, USERNAME, EMAIL, "n3w-password");
 
         authService.updateCredentials(request);
 
@@ -140,7 +140,7 @@ class AuthServiceTest {
     @Test
     void rejectsCallWithoutAuthentication() {
         SecurityContextHolder.clearContext();
-        var request = new UpdateCredentialsRequest(PASSWORD, null, null, "n3w-password");
+        var request = new UpdateCredentialsRequestDTO(PASSWORD, null, null, "n3w-password");
 
         assertThatThrownBy(() -> authService.updateCredentials(request))
                 .isInstanceOf(IncorrectCredentialsException.class);
@@ -153,7 +153,7 @@ class AuthServiceTest {
         SecurityContextHolder.getContext().setAuthentication(
                 new AnonymousAuthenticationToken("key", "anonymousUser",
                         AuthorityUtils.createAuthorityList("ROLE_ANONYMOUS")));
-        var request = new UpdateCredentialsRequest(PASSWORD, null, null, "n3w-password");
+        var request = new UpdateCredentialsRequestDTO(PASSWORD, null, null, "n3w-password");
 
         assertThatThrownBy(() -> authService.updateCredentials(request))
                 .isInstanceOf(IncorrectCredentialsException.class);
@@ -165,7 +165,7 @@ class AuthServiceTest {
     @Test
     void cannotTargetAnotherAccountThroughTheRequest() {
         when(userRepository.existsByEmail("victim@springbank.dev")).thenReturn(false);
-        var request = new UpdateCredentialsRequest(PASSWORD, null, "victim@springbank.dev", null);
+        var request = new UpdateCredentialsRequestDTO(PASSWORD, null, "victim@springbank.dev", null);
 
         authService.updateCredentials(request);
 
@@ -182,7 +182,7 @@ class AuthServiceTest {
         authenticateAs(ghost);
 
         when(userRepository.findByEmail("ghost@springbank.dev")).thenReturn(Optional.empty());
-        var request = new UpdateCredentialsRequest(PASSWORD, null, null, "n3w-password");
+        var request = new UpdateCredentialsRequestDTO(PASSWORD, null, null, "n3w-password");
 
         assertThatThrownBy(() -> authService.updateCredentials(request))
                 .isInstanceOf(UserNotFoundByEmail.class);

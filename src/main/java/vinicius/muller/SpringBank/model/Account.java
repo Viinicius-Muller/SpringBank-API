@@ -20,6 +20,9 @@ public class Account extends AuditBase {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @Column(unique = true, length = 6, nullable = false, updatable = false, name = "account_number")
+    private String accountNumber;
+
     @ManyToOne(fetch = FetchType.LAZY, optional = false, cascade = CascadeType.PERSIST)
     @JoinColumn(name = "user_id", nullable = false, unique = true)
     private User user;

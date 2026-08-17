@@ -2,14 +2,15 @@ package vinicius.muller.SpringBank.service;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.jpa.repository.config.EnableJpaAuditing;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import vinicius.muller.SpringBank.dto.AuthResponse;
-import vinicius.muller.SpringBank.dto.LoginRequest;
-import vinicius.muller.SpringBank.dto.RegisterRequest;
-import vinicius.muller.SpringBank.dto.UpdateCredentialsRequest;
+import vinicius.muller.SpringBank.dto.AuthResponseDTO;
+import vinicius.muller.SpringBank.dto.LoginRequestDTO;
+import vinicius.muller.SpringBank.dto.RegisterRequestDTO;
+import vinicius.muller.SpringBank.dto.UpdateCredentialsRequestDTO;
 import vinicius.muller.SpringBank.exception.AlreadyRegisteredException;
 import vinicius.muller.SpringBank.exception.IncorrectCredentialsException;
 import vinicius.muller.SpringBank.exception.UserNotFoundByEmail;
@@ -29,7 +30,7 @@ public class AuthService {
     private final PasswordEncoder passwordEncoder;
 
     @Transactional
-    public AuthResponse registerUser(RegisterRequest registerDTO) {
+    public AuthResponseDTO registerUser(RegisterRequestDTO registerDTO) {
         if (userRepository.existsByEmail(registerDTO.email()))
             throw new AlreadyRegisteredException("E-mail already belongs to an Account");
 
@@ -39,10 +40,10 @@ public class AuthService {
         user.setPasswordHash(passwordEncoder.encode(registerDTO.password()));
 
         userRepository.save(user);
-        return new AuthResponse(tokenService.generateToken(user), user);
+        return new AuthResponseDTO(tokenService.generateToken(user), user);
     }
 
-    public AuthResponse loginUser(LoginRequest loginDTO) {
+    public AuthResponseDTO loginUser(LoginRequestDTO loginDTO) {
         User user = userRepository.findByEmail(loginDTO.email())
                 .orElseThrow(() ->
                         new UsernameNotFoundException(
@@ -51,12 +52,12 @@ public class AuthService {
                 );
 
         if (user.isPasswordCorrect(loginDTO.password(), passwordEncoder)) {
-            return new AuthResponse(tokenService.generateToken(user), user);
+            return new AuthResponseDTO(tokenService.generateToken(user), user);
         } else throw new IncorrectCredentialsException("E-mail or password are incorrect");
     }
 
     @Transactional
-    public AuthResponse updateCredentials(UpdateCredentialsRequest updateDTO) {
+    public AuthResponseDTO updateCredentials(UpdateCredentialsRequestDTO updateDTO) {
         User caller = authenticatedUser();
 
         User user = userRepository.findByEmail(caller.getEmail())
@@ -89,7 +90,7 @@ public class AuthService {
         userRepository.save(user);
 
         // Needs to update the Token in the Frontend, if there was any update in the e-mail (subject)
-        return new AuthResponse(tokenService.generateToken(user), user);
+        return new AuthResponseDTO(tokenService.generateToken(user), user);
     }
 
     private User authenticatedUser() {

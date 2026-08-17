@@ -11,9 +11,9 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
-import vinicius.muller.SpringBank.dto.AccountResponse;
-import vinicius.muller.SpringBank.dto.CreateAccountRequest;
-import vinicius.muller.SpringBank.dto.DeleteAccountRequest;
+import vinicius.muller.SpringBank.dto.AccountResponseDTO;
+import vinicius.muller.SpringBank.dto.CreateAccountRequestDTO;
+import vinicius.muller.SpringBank.dto.DeleteAccountRequestDTO;
 import vinicius.muller.SpringBank.service.AccountService;
 
 @RestController
@@ -25,17 +25,17 @@ public class AccountController {
     private final AccountService accountService;
 
     @PostMapping
-    public ResponseEntity<AccountResponse> create(@Valid @RequestBody CreateAccountRequest createDTO) {
+    public ResponseEntity<AccountResponseDTO> create(@Valid @RequestBody CreateAccountRequestDTO createDTO) {
         return ResponseEntity.status(HttpStatus.CREATED).body(accountService.createAccount(createDTO));
     }
 
     @GetMapping("/me")
-    public ResponseEntity<AccountResponse> getMyAccount() {
+    public ResponseEntity<AccountResponseDTO> getMyAccount() {
         return ResponseEntity.ok(accountService.getMyAccount());
     }
 
     @DeleteMapping
-    public ResponseEntity<Void> delete(@Valid @RequestBody DeleteAccountRequest deleteDTO) {
+    public ResponseEntity<Void> delete(@Valid @RequestBody DeleteAccountRequestDTO deleteDTO) {
         accountService.deleteAccount(deleteDTO);
         return ResponseEntity.noContent().build();
     }

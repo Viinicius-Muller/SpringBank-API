@@ -10,10 +10,10 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
-import vinicius.muller.SpringBank.dto.AuthResponse;
-import vinicius.muller.SpringBank.dto.LoginRequest;
-import vinicius.muller.SpringBank.dto.RegisterRequest;
-import vinicius.muller.SpringBank.dto.UpdateCredentialsRequest;
+import vinicius.muller.SpringBank.dto.AuthResponseDTO;
+import vinicius.muller.SpringBank.dto.LoginRequestDTO;
+import vinicius.muller.SpringBank.dto.RegisterRequestDTO;
+import vinicius.muller.SpringBank.dto.UpdateCredentialsRequestDTO;
 import vinicius.muller.SpringBank.service.AuthService;
 
 @RestController
@@ -25,19 +25,19 @@ public class AuthController {
 
     @PostMapping("/register")
     @PreAuthorize("permitAll()")
-    public ResponseEntity<AuthResponse> register(@Valid @RequestBody RegisterRequest registerDTO) {
+    public ResponseEntity<AuthResponseDTO> register(@Valid @RequestBody RegisterRequestDTO registerDTO) {
         return ResponseEntity.status(HttpStatus.CREATED).body(authService.registerUser(registerDTO));
     }
 
     @PostMapping("/login")
     @PreAuthorize("permitAll()")
-    public ResponseEntity<AuthResponse> login(@Valid @RequestBody LoginRequest loginDTO) {
+    public ResponseEntity<AuthResponseDTO> login(@Valid @RequestBody LoginRequestDTO loginDTO) {
         return ResponseEntity.ok(authService.loginUser(loginDTO));
     }
 
     @PatchMapping("/credentials")
     @PreAuthorize("isAuthenticated()")
-    public ResponseEntity<AuthResponse> updateCredentials(@Valid @RequestBody UpdateCredentialsRequest updateDTO) {
+    public ResponseEntity<AuthResponseDTO> updateCredentials(@Valid @RequestBody UpdateCredentialsRequestDTO updateDTO) {
         return ResponseEntity.ok(authService.updateCredentials(updateDTO));
     }
 }
