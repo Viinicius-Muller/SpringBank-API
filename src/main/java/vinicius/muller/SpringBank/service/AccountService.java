@@ -4,7 +4,6 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.dao.DataIntegrityViolationException;
-import org.springframework.data.jpa.repository.config.EnableJpaAuditing;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -42,15 +41,15 @@ public class AccountService {
         account.setUser(caller);
         account.setPinHash(pinEncoder.encode(createDTO.pin()));
 
-        // Try creating account number up to 5 times
-        for (int i = 0; i < 5; i++) {
+        // Try creating account number up to 10 times
+        for (int i = 0; i < 10; i++) {
             String generatedAccNumber = accountNumberGenerator.genNumber(caller.getId());
             try {
                 account.setAccountNumber(generatedAccNumber);
                 accountRepository.save(account);
             } catch (DataIntegrityViolationException ex) {
                 // max attempt reached and wasn't successful
-                if (i == 4) {
+                if (i == 9) {
                     log.error("Reached maximum generator attempts");
 
                     account.setId(null);

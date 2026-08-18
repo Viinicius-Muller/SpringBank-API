@@ -7,6 +7,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 import org.springframework.data.annotation.CreatedDate;
+import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
 import java.math.BigDecimal;
 import java.time.Instant;
@@ -17,16 +18,19 @@ import java.time.Instant;
 @AllArgsConstructor
 @Entity
 @Table(name = "transfer")
+// Not an AuditBase (the transfer table has no updated_at/by columns), but @CreatedDate still
+// needs the listener registered or transfer_date_time is inserted as NULL
+@EntityListeners(AuditingEntityListener.class)
 public class Transfer {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @ManyToOne(optional = false, fetch = FetchType.LAZY, cascade = CascadeType.PERSIST)
+    @ManyToOne(optional = false, fetch = FetchType.LAZY)
     @JoinColumn(name = "sender_account_id")
     private Account senderAccount;
 
-    @ManyToOne(optional = false, fetch = FetchType.LAZY, cascade = CascadeType.PERSIST)
+    @ManyToOne(optional = false, fetch = FetchType.LAZY)
     @JoinColumn(name = "receiver_account_id")
     private Account receiverAccount;
 

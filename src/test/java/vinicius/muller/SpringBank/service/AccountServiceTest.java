@@ -18,6 +18,7 @@ import vinicius.muller.SpringBank.exception.IncorrectCredentialsException;
 import vinicius.muller.SpringBank.model.Account;
 import vinicius.muller.SpringBank.model.User;
 import vinicius.muller.SpringBank.repository.AccountRepository;
+import vinicius.muller.SpringBank.utils.AccountNumberGenerator;
 
 import java.math.BigDecimal;
 import java.util.Optional;
@@ -46,7 +47,8 @@ class AccountServiceTest {
     void setUp() {
         accountRepository = mock(AccountRepository.class);
         passwordEncoder = new BCryptPasswordEncoder();
-        accountService = new AccountService(accountRepository, passwordEncoder);
+        AccountNumberGenerator accountNumberGen = new AccountNumberGenerator();
+        accountService = new AccountService(accountRepository, accountNumberGen, passwordEncoder);
 
         user = new User();
         user.setId(1L);

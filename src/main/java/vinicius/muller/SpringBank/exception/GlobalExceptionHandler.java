@@ -41,10 +41,33 @@ public class GlobalExceptionHandler {
 
     // Stays vague on purpose, so a wrong password and an unknown e-mail look identical
     @ExceptionHandler({UsernameNotFoundException.class, BadCredentialsException.class,
-            IncorrectCredentialsException.class})
+            IncorrectCredentialsException.class, InvalidAccountCredentialsException.class})
     ProblemDetail handleBadCredentials(Exception ex) {
         log.warn("Failed authentication attempt");
         return problem(HttpStatus.UNAUTHORIZED, "Invalid credentials");
+    }
+
+    // Message names the caller and the owner, so it is logged and not echoed
+    @ExceptionHandler(UnauthorizedTransferException.class)
+    ProblemDetail handleUnauthorizedTransfer(UnauthorizedTransferException ex) {
+        log.warn("Transfer attempt on an account the caller does not own");
+        return problem(HttpStatus.FORBIDDEN, "Access denied");
+    }
+
+    @ExceptionHandler(SelfTransferException.class)
+    ProblemDetail handleSelfTransfer(SelfTransferException ex) {
+        return problem(HttpStatus.BAD_REQUEST, "Cannot transfer to the same account");
+    }
+
+    // Deliberately amount-free, so a rejected transfer never discloses the balance
+    @ExceptionHandler(InsufficientBalanceException.class)
+    ProblemDetail handleInsufficientBalance(InsufficientBalanceException ex) {
+        return problem(HttpStatus.UNPROCESSABLE_ENTITY, "Insufficient balance");
+    }
+
+    @ExceptionHandler(InactiveAccountException.class)
+    ProblemDetail handleInactiveAccount(InactiveAccountException ex) {
+        return problem(HttpStatus.BAD_REQUEST, "Account is not active");
     }
 
     // Echoes the message, since a registration form needs to know which field collided
