@@ -78,6 +78,13 @@ public class GlobalExceptionHandler {
         return problem(HttpStatus.CONFLICT, ex.getMessage());
     }
 
+    // Every generated number collided - transient, so the client can just retry
+    @ExceptionHandler(AccountNumberGenerationException.class)
+    ProblemDetail handleAccountNumberGeneration(AccountNumberGenerationException ex) {
+        log.error("Reached maximum account number generator attempts");
+        return problem(HttpStatus.SERVICE_UNAVAILABLE, "Could not allocate an account number, please retry");
+    }
+
     // A bad ?sort= on a paged endpoint is a client error - without this it lands in the catch-all as a 500
     @ExceptionHandler(PropertyReferenceException.class)
     ProblemDetail handleUnknownSortProperty(PropertyReferenceException ex) {

@@ -7,6 +7,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -15,6 +16,8 @@ import vinicius.muller.SpringBank.dto.AccountResponseDTO;
 import vinicius.muller.SpringBank.dto.CreateAccountRequestDTO;
 import vinicius.muller.SpringBank.dto.DeleteAccountRequestDTO;
 import vinicius.muller.SpringBank.service.AccountService;
+
+import java.util.List;
 
 @RestController
 @RequestMapping("/accounts")
@@ -29,14 +32,21 @@ public class AccountController {
         return ResponseEntity.status(HttpStatus.CREATED).body(accountService.createAccount(createDTO));
     }
 
-    @GetMapping("/me")
-    public ResponseEntity<AccountResponseDTO> getMyAccount() {
-        return ResponseEntity.ok(accountService.getMyAccount());
+    // lists the caller's accounts, so a client can discover the numbers the other routes need
+    @GetMapping
+    public ResponseEntity<List<AccountResponseDTO>> getMyAccounts() {
+        return ResponseEntity.ok(accountService.getMyAccounts());
     }
 
-    @DeleteMapping
-    public ResponseEntity<Void> delete(@Valid @RequestBody DeleteAccountRequestDTO deleteDTO) {
-        accountService.deleteAccount(deleteDTO);
+    @GetMapping("/{accountNumber}")
+    public ResponseEntity<AccountResponseDTO> getMyAccount(@PathVariable String accountNumber) {
+        return ResponseEntity.ok(accountService.getMyAccount(accountNumber));
+    }
+
+    @DeleteMapping("/{accountNumber}")
+    public ResponseEntity<Void> delete(@Valid @RequestBody DeleteAccountRequestDTO deleteDTO,
+                                       @PathVariable String accountNumber) {
+        accountService.deleteAccount(deleteDTO, accountNumber);
         return ResponseEntity.noContent().build();
     }
 }

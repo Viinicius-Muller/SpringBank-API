@@ -11,7 +11,7 @@ public final class AccountNumberGenerator {
     public String genNumber(Long userId) {
         Random random = new Random();
         String random5digitStr = String.format("%05d", random.nextInt(99999));
-        String accountNumber = userId.toString() + random5digitStr;
+        String accountNumber = userId.toString().charAt(0) + random5digitStr;
         log.info("Generated account number of: {}", accountNumber);
 
         return accountNumber; // 1-23456 (123456)

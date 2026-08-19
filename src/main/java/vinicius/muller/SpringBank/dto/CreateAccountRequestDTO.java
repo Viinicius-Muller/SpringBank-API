@@ -1,11 +1,11 @@
 package vinicius.muller.SpringBank.dto;
 
 import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.Size;
+import jakarta.validation.constraints.Pattern;
 
 public record CreateAccountRequestDTO(
         @NotBlank
-        @Size(min = 6, max = 6, message = "PIN value must be 6 digits")
+        @Pattern(regexp = "\\d{4,6}", message = "PIN must be 4 to 6 digits")
         String pin
 
 ) {}

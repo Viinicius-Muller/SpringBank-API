@@ -71,22 +71,22 @@ public class TransferService {
         return new TransferResponseDTO(transfer, senderAccount.getId());
     }
 
-    public PageResponseDTO<TransferResponseDTO> getMyTransfers(Pageable pageable) {
-        Account account = AccountUtils.callerAccount(accountRepository);
+    public PageResponseDTO<TransferResponseDTO> getMyTransfers(Pageable pageable, String accountNumber) {
+        Account account = AccountUtils.callerAccount(accountRepository, accountNumber);
 
         return new PageResponseDTO<>(transferRepository.findByAccountId(account.getId(), pageable)
                 .map(transfer -> new TransferResponseDTO(transfer, account.getId())));
     }
 
-    public PageResponseDTO<TransferResponseDTO> getMySentTransfers(Pageable pageable) {
-        Account account = AccountUtils.callerAccount(accountRepository);
+    public PageResponseDTO<TransferResponseDTO> getMySentTransfers(Pageable pageable, String accountNumber) {
+        Account account = AccountUtils.callerAccount(accountRepository, accountNumber);
 
         return new PageResponseDTO<>(transferRepository.findBySenderAccountId(account.getId(), pageable)
                 .map(transfer -> new TransferResponseDTO(transfer, account.getId())));
     }
 
-    public PageResponseDTO<TransferResponseDTO> getMyReceivedTransfers(Pageable pageable) {
-        Account account = AccountUtils.callerAccount(accountRepository);
+    public PageResponseDTO<TransferResponseDTO> getMyReceivedTransfers(Pageable pageable, String accountNumber) {
+        Account account = AccountUtils.callerAccount(accountRepository, accountNumber);
 
         return new PageResponseDTO<>(transferRepository.findByReceiverAccountId(account.getId(), pageable)
                 .map(transfer -> new TransferResponseDTO(transfer, account.getId())));

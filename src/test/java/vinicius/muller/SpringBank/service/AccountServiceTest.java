@@ -4,6 +4,7 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.security.authentication.AnonymousAuthenticationToken;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.authority.AuthorityUtils;
@@ -13,14 +14,16 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import vinicius.muller.SpringBank.dto.CreateAccountRequestDTO;
 import vinicius.muller.SpringBank.dto.DeleteAccountRequestDTO;
 import vinicius.muller.SpringBank.exception.AccountNotFoundException;
-import vinicius.muller.SpringBank.exception.AlreadyRegisteredException;
+import vinicius.muller.SpringBank.exception.AccountNumberGenerationException;
 import vinicius.muller.SpringBank.exception.IncorrectCredentialsException;
+import vinicius.muller.SpringBank.exception.UnauthorizedTransferException;
 import vinicius.muller.SpringBank.model.Account;
 import vinicius.muller.SpringBank.model.User;
 import vinicius.muller.SpringBank.repository.AccountRepository;
 import vinicius.muller.SpringBank.utils.AccountNumberGenerator;
 
 import java.math.BigDecimal;
+import java.util.List;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -28,6 +31,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -36,6 +40,7 @@ class AccountServiceTest {
     private static final String EMAIL = "vinicius@springbank.dev";
     private static final String USERNAME = "vinicius";
     private static final String PIN = "4821";
+    private static final String ACCOUNT_NUMBER = "100001";
 
     private AccountRepository accountRepository;
     private PasswordEncoder passwordEncoder;
@@ -57,10 +62,12 @@ class AccountServiceTest {
 
         account = new Account();
         account.setId(10L);
+        account.setAccountNumber(ACCOUNT_NUMBER);
         account.setUser(user);
         account.setPinHash(passwordEncoder.encode(PIN));
 
         when(accountRepository.save(any(Account.class))).thenAnswer(call -> call.getArgument(0));
+        when(accountRepository.saveAndFlush(any(Account.class))).thenAnswer(call -> call.getArgument(0));
 
         authenticateAs(user);
     }
@@ -75,64 +82,129 @@ class AccountServiceTest {
                 new UsernamePasswordAuthenticationToken(principal, null, principal.getAuthorities()));
     }
 
+    private User otherUser() {
+        User other = new User();
+        other.setId(2L);
+        return other;
+    }
+
+    @Test
+    void createsMultipleAccountsForTheSameUser() {
+        var response1 = accountService.createAccount(new CreateAccountRequestDTO(PIN));
+        var response2 = accountService.createAccount(new CreateAccountRequestDTO(PIN));
+
+        assertThat(response1.accountNumber()).isNotNull();
+        assertThat(response2.accountNumber()).isNotNull();
+        verify(accountRepository, times(2)).saveAndFlush(any(Account.class));
+    }
+
     @Test
     void createsAccountWithEncodedPinAndZeroBalance() {
-        when(accountRepository.existsByUserId(user.getId())).thenReturn(false);
-
         var response = accountService.createAccount(new CreateAccountRequestDTO(PIN));
 
         assertThat(response.username()).isEqualTo(USERNAME);
         assertThat(response.email()).isEqualTo(EMAIL);
+        assertThat(response.accountNumber()).hasSize(6);
         assertThat(response.balance()).isEqualByComparingTo(BigDecimal.ZERO);
         assertThat(response.active()).isTrue();
     }
 
+    void createsAccountNumberBasedOnUserId() {
+        authenticateAs(otherUser());
+
+        var response1 = accountService.createAccount(new CreateAccountRequestDTO(PIN));
+    }
+
     @Test
     void neverStoresPinInPlainText() {
-        when(accountRepository.existsByUserId(user.getId())).thenReturn(false);
-
         accountService.createAccount(new CreateAccountRequestDTO(PIN));
 
         var saved = ArgumentCaptor.forClass(Account.class);
-        verify(accountRepository).save(saved.capture());
+        verify(accountRepository).saveAndFlush(saved.capture());
 
         assertThat(saved.getValue().getPinHash()).isNotEqualTo(PIN);
         assertThat(passwordEncoder.matches(PIN, saved.getValue().getPinHash())).isTrue();
     }
 
+    // the retry loop used to keep saving after it had already succeeded
     @Test
-    void rejectsSecondAccountForSameUser() {
-        when(accountRepository.existsByUserId(user.getId())).thenReturn(true);
+    void savesOnlyOncePerCreatedAccount() {
+        accountService.createAccount(new CreateAccountRequestDTO(PIN));
+
+        verify(accountRepository).saveAndFlush(any(Account.class));
+    }
+
+    @Test
+    void retriesWhenGeneratedAccountNumberCollides() {
+        when(accountRepository.saveAndFlush(any(Account.class)))
+                .thenThrow(new DataIntegrityViolationException("duplicate account_number"))
+                .thenAnswer(call -> call.getArgument(0));
+
+        var response = accountService.createAccount(new CreateAccountRequestDTO(PIN));
+
+        assertThat(response.accountNumber()).hasSize(6);
+        verify(accountRepository, times(2)).saveAndFlush(any(Account.class));
+    }
+
+    @Test
+    void failsAfterExhaustingAccountNumberAttempts() {
+        when(accountRepository.saveAndFlush(any(Account.class)))
+                .thenThrow(new DataIntegrityViolationException("duplicate account_number"));
 
         assertThatThrownBy(() -> accountService.createAccount(new CreateAccountRequestDTO(PIN)))
-                .isInstanceOf(AlreadyRegisteredException.class);
+                .isInstanceOf(AccountNumberGenerationException.class);
 
-        verify(accountRepository, never()).save(any(Account.class));
+        verify(accountRepository, times(10)).saveAndFlush(any(Account.class));
+    }
+
+    @Test
+    void listsEveryAccountOfTheCaller() {
+        Account second = new Account();
+        second.setId(11L);
+        second.setAccountNumber("200002");
+        second.setUser(user);
+
+        when(accountRepository.findByUserId(user.getId())).thenReturn(List.of(account, second));
+
+        var response = accountService.getMyAccounts();
+
+        assertThat(response).extracting("accountNumber").containsExactly(ACCOUNT_NUMBER, "200002");
     }
 
     @Test
     void returnsCallerAccount() {
-        when(accountRepository.findByUserId(user.getId())).thenReturn(Optional.of(account));
+        when(accountRepository.findByAccountNumber(ACCOUNT_NUMBER)).thenReturn(Optional.of(account));
 
-        var response = accountService.getMyAccount();
+        var response = accountService.getMyAccount(ACCOUNT_NUMBER);
 
         assertThat(response.id()).isEqualTo(10L);
+        assertThat(response.accountNumber()).isEqualTo(ACCOUNT_NUMBER);
         assertThat(response.username()).isEqualTo(USERNAME);
     }
 
     @Test
-    void rejectsReadWhenCallerHasNoAccount() {
-        when(accountRepository.findByUserId(user.getId())).thenReturn(Optional.empty());
+    void rejectsReadOfUnknownAccount() {
+        when(accountRepository.findByAccountNumber(ACCOUNT_NUMBER)).thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> accountService.getMyAccount())
+        assertThatThrownBy(() -> accountService.getMyAccount(ACCOUNT_NUMBER))
                 .isInstanceOf(AccountNotFoundException.class);
     }
 
     @Test
-    void deactivatesAccountOnCorrectPin() {
-        when(accountRepository.findByUserId(user.getId())).thenReturn(Optional.of(account));
+    void rejectsReadOfAccountOwnedByAnotherUser() {
+        account.setUser(otherUser());
 
-        accountService.deleteAccount(new DeleteAccountRequestDTO(PIN));
+        when(accountRepository.findByAccountNumber(ACCOUNT_NUMBER)).thenReturn(Optional.of(account));
+
+        assertThatThrownBy(() -> accountService.getMyAccount(ACCOUNT_NUMBER))
+                .isInstanceOf(UnauthorizedTransferException.class);
+    }
+
+    @Test
+    void deactivatesAccountOnCorrectPin() {
+        when(accountRepository.findByAccountNumber(ACCOUNT_NUMBER)).thenReturn(Optional.of(account));
+
+        accountService.deleteAccount(new DeleteAccountRequestDTO(PIN), ACCOUNT_NUMBER);
 
         assertThat(account.getActive()).isFalse();
         verify(accountRepository).save(account);
@@ -140,10 +212,23 @@ class AccountServiceTest {
 
     @Test
     void rejectsDeleteOnWrongPin() {
-        when(accountRepository.findByUserId(user.getId())).thenReturn(Optional.of(account));
+        when(accountRepository.findByAccountNumber(ACCOUNT_NUMBER)).thenReturn(Optional.of(account));
 
-        assertThatThrownBy(() -> accountService.deleteAccount(new DeleteAccountRequestDTO("0000")))
+        assertThatThrownBy(() -> accountService.deleteAccount(new DeleteAccountRequestDTO("0000"), ACCOUNT_NUMBER))
                 .isInstanceOf(IncorrectCredentialsException.class);
+
+        assertThat(account.getActive()).isTrue();
+        verify(accountRepository, never()).save(any(Account.class));
+    }
+
+    @Test
+    void rejectsDeleteOfAccountOwnedByAnotherUser() {
+        account.setUser(otherUser());
+
+        when(accountRepository.findByAccountNumber(ACCOUNT_NUMBER)).thenReturn(Optional.of(account));
+
+        assertThatThrownBy(() -> accountService.deleteAccount(new DeleteAccountRequestDTO(PIN), ACCOUNT_NUMBER))
+                .isInstanceOf(UnauthorizedTransferException.class);
 
         assertThat(account.getActive()).isTrue();
         verify(accountRepository, never()).save(any(Account.class));
@@ -158,7 +243,10 @@ class AccountServiceTest {
         assertThatThrownBy(() -> accountService.createAccount(new CreateAccountRequestDTO(PIN)))
                 .isInstanceOf(IncorrectCredentialsException.class);
 
-        assertThatThrownBy(() -> accountService.getMyAccount())
+        assertThatThrownBy(() -> accountService.getMyAccounts())
+                .isInstanceOf(IncorrectCredentialsException.class);
+
+        assertThatThrownBy(() -> accountService.getMyAccount(ACCOUNT_NUMBER))
                 .isInstanceOf(IncorrectCredentialsException.class);
     }
 }

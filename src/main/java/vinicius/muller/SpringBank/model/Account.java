@@ -24,7 +24,7 @@ public class Account extends AuditBase {
     private String accountNumber;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false, cascade = CascadeType.PERSIST)
-    @JoinColumn(name = "user_id", nullable = false, unique = true)
+    @JoinColumn(name = "user_id", nullable = false)
     private User user;
 
     @Column(name = "pin_hash", nullable = false)

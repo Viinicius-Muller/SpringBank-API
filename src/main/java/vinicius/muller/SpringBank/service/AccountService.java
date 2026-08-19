@@ -10,7 +10,7 @@ import org.springframework.transaction.annotation.Transactional;
 import vinicius.muller.SpringBank.dto.AccountResponseDTO;
 import vinicius.muller.SpringBank.dto.CreateAccountRequestDTO;
 import vinicius.muller.SpringBank.dto.DeleteAccountRequestDTO;
-import vinicius.muller.SpringBank.exception.AlreadyRegisteredException;
+import vinicius.muller.SpringBank.exception.AccountNumberGenerationException;
 import vinicius.muller.SpringBank.exception.IncorrectCredentialsException;
 import vinicius.muller.SpringBank.utils.AccountNumberGenerator;
 import vinicius.muller.SpringBank.utils.AccountUtils;
@@ -19,11 +19,15 @@ import vinicius.muller.SpringBank.model.Account;
 import vinicius.muller.SpringBank.model.User;
 import vinicius.muller.SpringBank.repository.AccountRepository;
 
+import java.util.List;
+
 @Service
 @RequiredArgsConstructor
 @Slf4j
 @Transactional(readOnly = true)
 public class AccountService {
+    private static final int MAX_ACCOUNT_NUMBER_ATTEMPTS = 10;
+
     private final AccountRepository accountRepository;
     private final AccountNumberGenerator accountNumberGenerator;
 
@@ -34,42 +38,43 @@ public class AccountService {
     public AccountResponseDTO createAccount(CreateAccountRequestDTO createDTO) {
         User caller = SecurityUtils.authenticatedUser();
 
-        if (accountRepository.existsByUserId(caller.getId()))
-            throw new AlreadyRegisteredException("User already has an Account");
-
         Account account = new Account();
         account.setUser(caller);
         account.setPinHash(pinEncoder.encode(createDTO.pin()));
 
-        // Try creating account number up to 10 times
-        for (int i = 0; i < 10; i++) {
+        for (int i = 0; i < MAX_ACCOUNT_NUMBER_ATTEMPTS; i++) {
             String generatedAccNumber = accountNumberGenerator.genNumber(caller.getId());
             try {
                 account.setAccountNumber(generatedAccNumber);
-                accountRepository.save(account);
-            } catch (DataIntegrityViolationException ex) {
-                // max attempt reached and wasn't successful
-                if (i == 9) {
-                    log.error("Reached maximum generator attempts");
+                accountRepository.saveAndFlush(account);
 
-                    account.setId(null);
-                    account.setAccountNumber(null);
-                    return null;
-                }
-                log.error("Not unique value: {}",generatedAccNumber);
+                log.info("Account {} created for user {}", account.getId(), caller.getId());
+                return new AccountResponseDTO(account);
+            } catch (DataIntegrityViolationException ex) {
+                log.warn("Not unique value: {}", generatedAccNumber);
+                account.setId(null);
             }
         }
 
-        return new AccountResponseDTO(account);
+        throw new AccountNumberGenerationException(
+                "Could not generate a free account number in " + MAX_ACCOUNT_NUMBER_ATTEMPTS + " attempts");
     }
 
-    public AccountResponseDTO getMyAccount() {
-        return new AccountResponseDTO(AccountUtils.callerAccount(accountRepository));
+    public List<AccountResponseDTO> getMyAccounts() {
+        User caller = SecurityUtils.authenticatedUser();
+
+        return accountRepository.findByUserId(caller.getId()).stream()
+                .map(AccountResponseDTO::new)
+                .toList();
+    }
+
+    public AccountResponseDTO getMyAccount(String accountNumber) {
+        return new AccountResponseDTO(AccountUtils.callerAccount(accountRepository, accountNumber));
     }
 
     @Transactional
-    public void deleteAccount(DeleteAccountRequestDTO deleteDTO) {
-        Account account = AccountUtils.callerAccount(accountRepository);
+    public void deleteAccount(DeleteAccountRequestDTO deleteDTO, String accountNumber) {
+        Account account = AccountUtils.callerAccount(accountRepository, accountNumber);
 
         if (!account.isPinCorrect(deleteDTO.pin(), pinEncoder))
             throw new IncorrectCredentialsException("PIN is incorrect");

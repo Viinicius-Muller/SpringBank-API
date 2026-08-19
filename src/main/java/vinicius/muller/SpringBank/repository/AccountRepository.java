@@ -8,14 +8,16 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import vinicius.muller.SpringBank.model.Account;
 
+import java.util.List;
 import java.util.Optional;
 
 public interface AccountRepository extends JpaRepository<Account, Long> {
+    // a user may hold many accounts
     @EntityGraph(attributePaths = "user")
-    Optional<Account> findByUserId(Long userId);
+    List<Account> findByUserId(Long userId);
 
-    Boolean existsByUserId(Long userId);
-
+    // finds acc + user, since AccountResponseDTO reads the owner
+    @EntityGraph(attributePaths = "user")
     Optional<Account> findByAccountNumber(String accountNumber);
 
     // finds acc + user
