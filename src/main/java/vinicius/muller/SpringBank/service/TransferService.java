@@ -3,9 +3,11 @@ package vinicius.muller.SpringBank.service;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.data.domain.Pageable;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import vinicius.muller.SpringBank.dto.PageResponseDTO;
 import vinicius.muller.SpringBank.dto.TransferRequestDTO;
 import vinicius.muller.SpringBank.dto.TransferResponseDTO;
 import vinicius.muller.SpringBank.exception.AccountNotFoundException;
@@ -19,6 +21,7 @@ import vinicius.muller.SpringBank.model.Transfer;
 import vinicius.muller.SpringBank.model.User;
 import vinicius.muller.SpringBank.repository.AccountRepository;
 import vinicius.muller.SpringBank.repository.TransferRepository;
+import vinicius.muller.SpringBank.utils.AccountUtils;
 import vinicius.muller.SpringBank.utils.SecurityUtils;
 
 @Service
@@ -65,7 +68,28 @@ public class TransferService {
         log.info("Transfer {} of {} from account {} to account {}",
                 transfer.getId(), transfer.getValue(), senderAccount.getId(), receiverAccount.getId());
 
-        return new TransferResponseDTO(transfer);
+        return new TransferResponseDTO(transfer, senderAccount.getId());
+    }
+
+    public PageResponseDTO<TransferResponseDTO> getMyTransfers(Pageable pageable) {
+        Account account = AccountUtils.callerAccount(accountRepository);
+
+        return new PageResponseDTO<>(transferRepository.findByAccountId(account.getId(), pageable)
+                .map(transfer -> new TransferResponseDTO(transfer, account.getId())));
+    }
+
+    public PageResponseDTO<TransferResponseDTO> getMySentTransfers(Pageable pageable) {
+        Account account = AccountUtils.callerAccount(accountRepository);
+
+        return new PageResponseDTO<>(transferRepository.findBySenderAccountId(account.getId(), pageable)
+                .map(transfer -> new TransferResponseDTO(transfer, account.getId())));
+    }
+
+    public PageResponseDTO<TransferResponseDTO> getMyReceivedTransfers(Pageable pageable) {
+        Account account = AccountUtils.callerAccount(accountRepository);
+
+        return new PageResponseDTO<>(transferRepository.findByReceiverAccountId(account.getId(), pageable)
+                .map(transfer -> new TransferResponseDTO(transfer, account.getId())));
     }
 
     public void validateTransaction(User caller, TransferRequestDTO dto, Account senderAccount, Account receiverAccount) {

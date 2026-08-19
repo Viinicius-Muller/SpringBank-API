@@ -58,7 +58,7 @@ public class AuthService {
 
     @Transactional
     public AuthResponseDTO updateCredentials(UpdateCredentialsRequestDTO updateDTO) {
-        User caller = authenticatedUser();
+        User caller = SecurityUtils.authenticatedUser();
 
         User user = userRepository.findByEmail(caller.getEmail())
                 .orElseThrow(() ->
@@ -91,9 +91,5 @@ public class AuthService {
 
         // Needs to update the Token in the Frontend, if there was any update in the e-mail (subject)
         return new AuthResponseDTO(tokenService.generateToken(user), user);
-    }
-
-    private User authenticatedUser() {
-        return SecurityUtils.authenticatedUser();
     }
 }

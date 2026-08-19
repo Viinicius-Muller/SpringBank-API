@@ -10,10 +10,10 @@ import org.springframework.transaction.annotation.Transactional;
 import vinicius.muller.SpringBank.dto.AccountResponseDTO;
 import vinicius.muller.SpringBank.dto.CreateAccountRequestDTO;
 import vinicius.muller.SpringBank.dto.DeleteAccountRequestDTO;
-import vinicius.muller.SpringBank.exception.AccountNotFoundException;
 import vinicius.muller.SpringBank.exception.AlreadyRegisteredException;
 import vinicius.muller.SpringBank.exception.IncorrectCredentialsException;
 import vinicius.muller.SpringBank.utils.AccountNumberGenerator;
+import vinicius.muller.SpringBank.utils.AccountUtils;
 import vinicius.muller.SpringBank.utils.SecurityUtils;
 import vinicius.muller.SpringBank.model.Account;
 import vinicius.muller.SpringBank.model.User;
@@ -64,12 +64,12 @@ public class AccountService {
     }
 
     public AccountResponseDTO getMyAccount() {
-        return new AccountResponseDTO(callerAccount());
+        return new AccountResponseDTO(AccountUtils.callerAccount(accountRepository));
     }
 
     @Transactional
     public void deleteAccount(DeleteAccountRequestDTO deleteDTO) {
-        Account account = callerAccount();
+        Account account = AccountUtils.callerAccount(accountRepository);
 
         if (!account.isPinCorrect(deleteDTO.pin(), pinEncoder))
             throw new IncorrectCredentialsException("PIN is incorrect");
@@ -78,16 +78,5 @@ public class AccountService {
         accountRepository.save(account);
 
         log.info("Account {} deactivated", account.getId());
-    }
-
-    private Account callerAccount() {
-        User caller = SecurityUtils.authenticatedUser();
-
-        return accountRepository.findByUserId(caller.getId())
-                .orElseThrow(() ->
-                        new AccountNotFoundException(
-                                "Account not found for user: " + caller.getId()
-                        )
-                );
     }
 }

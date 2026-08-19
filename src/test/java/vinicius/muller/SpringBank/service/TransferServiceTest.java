@@ -6,7 +6,12 @@ import org.junit.jupiter.api.Test;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import vinicius.muller.SpringBank.dto.TransferDirection;
 import vinicius.muller.SpringBank.dto.TransferRequestDTO;
 import vinicius.muller.SpringBank.exception.AccountNotFoundException;
 import vinicius.muller.SpringBank.exception.InactiveAccountException;
@@ -21,6 +26,7 @@ import vinicius.muller.SpringBank.repository.AccountRepository;
 import vinicius.muller.SpringBank.repository.TransferRepository;
 
 import java.math.BigDecimal;
+import java.util.List;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -78,6 +84,7 @@ class TransferServiceTest {
         when(accountRepository.findByAccountNumberForUpdate(RECEIVER_NUMBER))
                 .thenReturn(Optional.of(receiverAccount));
         when(transferRepository.save(any(Transfer.class))).thenAnswer(call -> call.getArgument(0));
+        when(accountRepository.findByUserId(sender.getId())).thenReturn(Optional.of(senderAccount));
 
         SecurityContextHolder.getContext().setAuthentication(
                 new UsernamePasswordAuthenticationToken(sender, null, sender.getAuthorities()));
@@ -212,6 +219,90 @@ class TransferServiceTest {
                 .isInstanceOf(InactiveAccountException.class);
 
         assertNothingMoved();
+    }
+
+    // ---- statement reads ----
+
+    private static final Pageable PAGE = PageRequest.of(0, 10);
+
+    private Transfer transfer(Long id, Account from, Account to, String value) {
+        Transfer transfer = new Transfer();
+        transfer.setId(id);
+        transfer.setSenderAccount(from);
+        transfer.setReceiverAccount(to);
+        transfer.setValue(new BigDecimal(value));
+        return transfer;
+    }
+
+    private Page<Transfer> page(List<Transfer> content, long total) {
+        return new PageImpl<>(content, PAGE, total);
+    }
+
+    @Test
+    void myTransfersMarksTheDirectionRelativeToTheCaller() {
+        when(transferRepository.findByAccountId(10L, PAGE)).thenReturn(page(List.of(
+                transfer(1L, senderAccount, receiverAccount, "30.00"),
+                transfer(2L, receiverAccount, senderAccount, "7.50")), 2));
+
+        var response = transferService.getMyTransfers(PAGE);
+
+        assertThat(response.content()).extracting(dto -> dto.direction())
+                .containsExactly(TransferDirection.SENT, TransferDirection.RECEIVED);
+        assertThat(response.content()).extracting(dto -> dto.id()).containsExactly(1L, 2L);
+    }
+
+    @Test
+    void myTransfersCopiesThePageMetadata() {
+        Pageable secondPage = PageRequest.of(1, 5);
+        when(transferRepository.findByAccountId(10L, secondPage))
+                .thenReturn(new PageImpl<>(
+                        List.of(transfer(1L, senderAccount, receiverAccount, "30.00")), secondPage, 11));
+
+        var response = transferService.getMyTransfers(secondPage);
+
+        assertThat(response.page()).isEqualTo(1);
+        assertThat(response.size()).isEqualTo(5);
+        assertThat(response.totalElements()).isEqualTo(11);
+        assertThat(response.totalPages()).isEqualTo(3);
+        assertThat(response.last()).isFalse();
+    }
+
+    @Test
+    void mySentTransfersQueriesOnlyTheSenderSide() {
+        when(transferRepository.findBySenderAccountId(10L, PAGE)).thenReturn(page(List.of(
+                transfer(1L, senderAccount, receiverAccount, "30.00")), 1));
+
+        var response = transferService.getMySentTransfers(PAGE);
+
+        assertThat(response.content()).allMatch(dto -> dto.direction() == TransferDirection.SENT);
+        verify(transferRepository).findBySenderAccountId(10L, PAGE);
+        verify(transferRepository, never()).findByReceiverAccountId(any(), any());
+        verify(transferRepository, never()).findByAccountId(any(), any());
+    }
+
+    @Test
+    void myReceivedTransfersQueriesOnlyTheReceiverSide() {
+        when(transferRepository.findByReceiverAccountId(10L, PAGE)).thenReturn(page(List.of(
+                transfer(2L, receiverAccount, senderAccount, "7.50")), 1));
+
+        var response = transferService.getMyReceivedTransfers(PAGE);
+
+        assertThat(response.content()).allMatch(dto -> dto.direction() == TransferDirection.RECEIVED);
+        verify(transferRepository).findByReceiverAccountId(10L, PAGE);
+        verify(transferRepository, never()).findBySenderAccountId(any(), any());
+        verify(transferRepository, never()).findByAccountId(any(), any());
+    }
+
+    @Test
+    void statementReadsFailWhenTheCallerHasNoAccount() {
+        when(accountRepository.findByUserId(sender.getId())).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> transferService.getMyTransfers(PAGE))
+                .isInstanceOf(AccountNotFoundException.class);
+        assertThatThrownBy(() -> transferService.getMySentTransfers(PAGE))
+                .isInstanceOf(AccountNotFoundException.class);
+        assertThatThrownBy(() -> transferService.getMyReceivedTransfers(PAGE))
+                .isInstanceOf(AccountNotFoundException.class);
     }
 
     private void assertNothingMoved() {

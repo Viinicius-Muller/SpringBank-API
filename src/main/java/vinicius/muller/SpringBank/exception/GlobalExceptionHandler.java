@@ -2,6 +2,8 @@ package vinicius.muller.SpringBank.exception;
 
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
+// Spring Data 4 moved this out of org.springframework.data.mapping
+import org.springframework.data.core.PropertyReferenceException;
 import org.springframework.http.ProblemDetail;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.authentication.BadCredentialsException;
@@ -74,6 +76,12 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(AlreadyRegisteredException.class)
     ProblemDetail handleAlreadyRegistered(AlreadyRegisteredException ex) {
         return problem(HttpStatus.CONFLICT, ex.getMessage());
+    }
+
+    // A bad ?sort= on a paged endpoint is a client error - without this it lands in the catch-all as a 500
+    @ExceptionHandler(PropertyReferenceException.class)
+    ProblemDetail handleUnknownSortProperty(PropertyReferenceException ex) {
+        return problem(HttpStatus.BAD_REQUEST, "Unknown sort property");
     }
 
     @ExceptionHandler(AccessDeniedException.class)
