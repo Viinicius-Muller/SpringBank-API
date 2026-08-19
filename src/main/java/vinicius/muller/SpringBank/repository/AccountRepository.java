@@ -20,6 +20,8 @@ public interface AccountRepository extends JpaRepository<Account, Long> {
     @EntityGraph(attributePaths = "user")
     Optional<Account> findByAccountNumber(String accountNumber);
 
+    boolean existsByAccountNumber(String accountNumber);
+
     // finds acc + user
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select a from Account a join fetch a.user where a.accountNumber = :accountNumber")

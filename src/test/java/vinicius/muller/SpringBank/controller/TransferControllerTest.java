@@ -163,7 +163,7 @@ class TransferControllerTest {
         mockMvc.perform(post(CREATE)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
-                                {"receiverAccountNumber":"900002","value":30.00,"pin":"4821"}"""))
+                                {"receiverAccountNumber":"900002","value":30.00,"pin":"482193"}"""))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.id").value(1))
                 .andExpect(jsonPath("$.value").value(30.00));

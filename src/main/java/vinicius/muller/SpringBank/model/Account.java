@@ -23,7 +23,7 @@ public class Account extends AuditBase {
     @Column(unique = true, length = 6, nullable = false, updatable = false, name = "account_number")
     private String accountNumber;
 
-    @ManyToOne(fetch = FetchType.LAZY, optional = false, cascade = CascadeType.PERSIST)
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "user_id", nullable = false)
     private User user;
 

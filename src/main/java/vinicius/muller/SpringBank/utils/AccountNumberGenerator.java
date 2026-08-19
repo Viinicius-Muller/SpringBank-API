@@ -3,17 +3,20 @@ package vinicius.muller.SpringBank.utils;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
-import java.util.Random;
+import java.security.SecureRandom;
 
 @Slf4j
 @Component
 public final class AccountNumberGenerator {
-    public String genNumber(Long userId) {
-        Random random = new Random();
-        String random5digitStr = String.format("%05d", random.nextInt(99999));
-        String accountNumber = userId.toString().charAt(0) + random5digitStr;
+
+    // better for cryptography
+    private static final SecureRandom RANDOM = new SecureRandom();
+    private static final int UPPER_BOUND = 1_000_000;
+
+    public String genNumber() {
+        String accountNumber = String.format("%06d", RANDOM.nextInt(UPPER_BOUND));
         log.info("Generated account number of: {}", accountNumber);
 
-        return accountNumber; // 1-23456 (123456)
+        return accountNumber;
     }
 }

@@ -34,6 +34,10 @@ public class AuthService {
         if (userRepository.existsByEmail(registerDTO.email()))
             throw new AlreadyRegisteredException("E-mail already belongs to an Account");
 
+        // users.username is UNIQUE - without this the violation escapes as a 500
+        if (userRepository.existsByUsername(registerDTO.username()))
+            throw new AlreadyRegisteredException("Username already belongs to an Account");
+
         User user = new User();
         user.setEmail(registerDTO.email());
         user.setUsername(registerDTO.username());

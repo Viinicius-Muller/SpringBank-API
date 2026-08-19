@@ -4,18 +4,21 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
-import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.security.authentication.AnonymousAuthenticationToken;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.authority.AuthorityUtils;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import vinicius.muller.SpringBank.dto.CashRequestDTO;
 import vinicius.muller.SpringBank.dto.CreateAccountRequestDTO;
 import vinicius.muller.SpringBank.dto.DeleteAccountRequestDTO;
 import vinicius.muller.SpringBank.exception.AccountNotFoundException;
 import vinicius.muller.SpringBank.exception.AccountNumberGenerationException;
+import vinicius.muller.SpringBank.exception.InactiveAccountException;
 import vinicius.muller.SpringBank.exception.IncorrectCredentialsException;
+import vinicius.muller.SpringBank.exception.InsufficientBalanceException;
+import vinicius.muller.SpringBank.exception.InvalidAccountCredentialsException;
 import vinicius.muller.SpringBank.exception.UnauthorizedTransferException;
 import vinicius.muller.SpringBank.model.Account;
 import vinicius.muller.SpringBank.model.User;
@@ -29,6 +32,7 @@ import java.util.Optional;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
@@ -39,7 +43,7 @@ class AccountServiceTest {
 
     private static final String EMAIL = "vinicius@springbank.dev";
     private static final String USERNAME = "vinicius";
-    private static final String PIN = "4821";
+    private static final String PIN = "482193";
     private static final String ACCOUNT_NUMBER = "100001";
 
     private AccountRepository accountRepository;
@@ -109,10 +113,14 @@ class AccountServiceTest {
         assertThat(response.active()).isTrue();
     }
 
-    void createsAccountNumberBasedOnUserId() {
+    // the number is deliberately not user-prefixed - it draws from the full 6-digit space
+    @Test
+    void createsSixDigitAccountNumberIndependentOfUserId() {
         authenticateAs(otherUser());
 
-        var response1 = accountService.createAccount(new CreateAccountRequestDTO(PIN));
+        var response = accountService.createAccount(new CreateAccountRequestDTO(PIN));
+
+        assertThat(response.accountNumber()).matches("[0-9]{6}");
     }
 
     @Test
@@ -134,27 +142,30 @@ class AccountServiceTest {
         verify(accountRepository).saveAndFlush(any(Account.class));
     }
 
+    // A taken number is skipped before the insert. Catching the unique violation instead
+    // could never work: on Postgres it aborts the transaction, so the retry save fails too.
     @Test
-    void retriesWhenGeneratedAccountNumberCollides() {
-        when(accountRepository.saveAndFlush(any(Account.class)))
-                .thenThrow(new DataIntegrityViolationException("duplicate account_number"))
-                .thenAnswer(call -> call.getArgument(0));
+    void skipsGeneratedAccountNumberThatIsAlreadyTaken() {
+        when(accountRepository.existsByAccountNumber(anyString()))
+                .thenReturn(true)
+                .thenReturn(false);
 
         var response = accountService.createAccount(new CreateAccountRequestDTO(PIN));
 
         assertThat(response.accountNumber()).hasSize(6);
-        verify(accountRepository, times(2)).saveAndFlush(any(Account.class));
+        verify(accountRepository, times(2)).existsByAccountNumber(anyString());
+        verify(accountRepository).saveAndFlush(any(Account.class));
     }
 
     @Test
     void failsAfterExhaustingAccountNumberAttempts() {
-        when(accountRepository.saveAndFlush(any(Account.class)))
-                .thenThrow(new DataIntegrityViolationException("duplicate account_number"));
+        when(accountRepository.existsByAccountNumber(anyString())).thenReturn(true);
 
         assertThatThrownBy(() -> accountService.createAccount(new CreateAccountRequestDTO(PIN)))
                 .isInstanceOf(AccountNumberGenerationException.class);
 
-        verify(accountRepository, times(10)).saveAndFlush(any(Account.class));
+        verify(accountRepository, times(10)).existsByAccountNumber(anyString());
+        verify(accountRepository, never()).saveAndFlush(any(Account.class));
     }
 
     @Test
@@ -214,7 +225,7 @@ class AccountServiceTest {
     void rejectsDeleteOnWrongPin() {
         when(accountRepository.findByAccountNumber(ACCOUNT_NUMBER)).thenReturn(Optional.of(account));
 
-        assertThatThrownBy(() -> accountService.deleteAccount(new DeleteAccountRequestDTO("0000"), ACCOUNT_NUMBER))
+        assertThatThrownBy(() -> accountService.deleteAccount(new DeleteAccountRequestDTO("000000"), ACCOUNT_NUMBER))
                 .isInstanceOf(IncorrectCredentialsException.class);
 
         assertThat(account.getActive()).isTrue();
@@ -248,5 +259,118 @@ class AccountServiceTest {
 
         assertThatThrownBy(() -> accountService.getMyAccount(ACCOUNT_NUMBER))
                 .isInstanceOf(IncorrectCredentialsException.class);
+    }
+
+    // --- deposit / withdraw: the only path that puts money into an account ---
+
+    private void lockable() {
+        when(accountRepository.findByAccountNumberForUpdate(ACCOUNT_NUMBER)).thenReturn(Optional.of(account));
+    }
+
+    @Test
+    void depositCreditsTheBalance() {
+        account.setBalance(new BigDecimal("10.00"));
+        lockable();
+
+        var response = accountService.deposit(new CashRequestDTO(new BigDecimal("90.00"), PIN), ACCOUNT_NUMBER);
+
+        assertThat(account.getBalance()).isEqualByComparingTo("100.00");
+        assertThat(response.balance()).isEqualByComparingTo("100.00");
+    }
+
+    @Test
+    void withdrawDebitsTheBalance() {
+        account.setBalance(new BigDecimal("100.00"));
+        lockable();
+
+        var response = accountService.withdraw(new CashRequestDTO(new BigDecimal("40.00"), PIN), ACCOUNT_NUMBER);
+
+        assertThat(account.getBalance()).isEqualByComparingTo("60.00");
+        assertThat(response.balance()).isEqualByComparingTo("60.00");
+    }
+
+    @Test
+    void withdrawAllowsTheExactFullBalance() {
+        account.setBalance(new BigDecimal("100.00"));
+        lockable();
+
+        accountService.withdraw(new CashRequestDTO(new BigDecimal("100.00"), PIN), ACCOUNT_NUMBER);
+
+        assertThat(account.getBalance()).isEqualByComparingTo(BigDecimal.ZERO);
+    }
+
+    @Test
+    void withdrawRejectsMoreThanTheBalance() {
+        account.setBalance(new BigDecimal("100.00"));
+        lockable();
+
+        assertThatThrownBy(() -> accountService.withdraw(
+                new CashRequestDTO(new BigDecimal("100.01"), PIN), ACCOUNT_NUMBER))
+                .isInstanceOf(InsufficientBalanceException.class);
+
+        assertThat(account.getBalance()).isEqualByComparingTo("100.00");
+    }
+
+    @Test
+    void cashOperationsRejectWrongPin() {
+        account.setBalance(new BigDecimal("100.00"));
+        lockable();
+
+        assertThatThrownBy(() -> accountService.deposit(
+                new CashRequestDTO(new BigDecimal("10.00"), "000000"), ACCOUNT_NUMBER))
+                .isInstanceOf(InvalidAccountCredentialsException.class);
+
+        assertThatThrownBy(() -> accountService.withdraw(
+                new CashRequestDTO(new BigDecimal("10.00"), "000000"), ACCOUNT_NUMBER))
+                .isInstanceOf(InvalidAccountCredentialsException.class);
+
+        assertThat(account.getBalance()).isEqualByComparingTo("100.00");
+    }
+
+    @Test
+    void cashOperationsRejectInactiveAccount() {
+        account.setBalance(new BigDecimal("100.00"));
+        account.setActive(false);
+        lockable();
+
+        assertThatThrownBy(() -> accountService.deposit(
+                new CashRequestDTO(new BigDecimal("10.00"), PIN), ACCOUNT_NUMBER))
+                .isInstanceOf(InactiveAccountException.class);
+
+        assertThat(account.getBalance()).isEqualByComparingTo("100.00");
+    }
+
+    @Test
+    void cashOperationsRejectAccountOwnedByAnotherUser() {
+        account.setBalance(new BigDecimal("100.00"));
+        account.setUser(otherUser());
+        lockable();
+
+        assertThatThrownBy(() -> accountService.deposit(
+                new CashRequestDTO(new BigDecimal("10.00"), PIN), ACCOUNT_NUMBER))
+                .isInstanceOf(UnauthorizedTransferException.class);
+
+        assertThat(account.getBalance()).isEqualByComparingTo("100.00");
+    }
+
+    @Test
+    void cashOperations404UnknownAccount() {
+        when(accountRepository.findByAccountNumberForUpdate("999999")).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> accountService.deposit(
+                new CashRequestDTO(new BigDecimal("10.00"), PIN), "999999"))
+                .isInstanceOf(AccountNotFoundException.class);
+    }
+
+    // must take the row lock, otherwise two concurrent writers could both read the old balance
+    @Test
+    void cashOperationsLockTheAccountRow() {
+        account.setBalance(new BigDecimal("100.00"));
+        lockable();
+
+        accountService.deposit(new CashRequestDTO(new BigDecimal("10.00"), PIN), ACCOUNT_NUMBER);
+
+        verify(accountRepository).findByAccountNumberForUpdate(ACCOUNT_NUMBER);
+        verify(accountRepository, never()).findByAccountNumber(anyString());
     }
 }

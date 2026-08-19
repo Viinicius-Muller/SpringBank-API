@@ -12,7 +12,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class CustomPinEncoderTest {
 
     private static final String PEPPER = "test-pepper-not-the-one-used-in-production";
-    private static final String PIN = "4821";
+    private static final String PIN = "482193";
 
     private CustomPinEncoder encoder;
 
@@ -33,7 +33,7 @@ class CustomPinEncoderTest {
 
     @Test
     void rejectsAWrongPin() {
-        assertFalse(encoder.matches("1234", encoder.encode(PIN)));
+        assertFalse(encoder.matches("111111", encoder.encode(PIN)));
     }
 
     // The point of the pepper: without the secret, a leaked hash cannot be attacked offline

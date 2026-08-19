@@ -67,7 +67,7 @@ public class SecurityConfig {
         return new BCryptPasswordEncoder();
     }
 
-    @Bean("pinEncoder") // PINs (4-6 digits) get a custom encoder for more strenght
+    @Bean("pinEncoder") // PINs (6 digits) get a custom encoder for more strenght
     PasswordEncoder pinEncoder(@Value("${app.security.pin.pepper}") String pepper) {
         return new CustomPinEncoder(new BCryptPasswordEncoder(PIN_ENCODER_STRENGTH), pepper);
     }

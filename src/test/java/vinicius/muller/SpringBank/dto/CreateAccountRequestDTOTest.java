@@ -28,15 +28,15 @@ class CreateAccountRequestDTOTest {
     }
 
     @ParameterizedTest
-    @ValueSource(strings = {"1234", "12345", "123456"})
-    void acceptsPinBetweenFourAndSixDigits(String pin) {
+    @ValueSource(strings = {"123456", "000000", "999999"})
+    void acceptsExactlySixDigitPin(String pin) {
         var request = new CreateAccountRequestDTO(pin);
 
         assertThat(validator.validate(request)).isEmpty();
     }
 
     @ParameterizedTest
-    @ValueSource(strings = {"123", "1234567", "12a4", "12 4", ""})
+    @ValueSource(strings = {"12345", "1234567", "1234", "12a456", "12 456", ""})
     void rejectsMalformedPin(String pin) {
         var request = new CreateAccountRequestDTO(pin);
 

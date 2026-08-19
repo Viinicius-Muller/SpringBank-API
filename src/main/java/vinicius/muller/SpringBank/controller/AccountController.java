@@ -13,6 +13,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import vinicius.muller.SpringBank.dto.AccountResponseDTO;
+import vinicius.muller.SpringBank.dto.CashRequestDTO;
 import vinicius.muller.SpringBank.dto.CreateAccountRequestDTO;
 import vinicius.muller.SpringBank.dto.DeleteAccountRequestDTO;
 import vinicius.muller.SpringBank.service.AccountService;
@@ -32,7 +33,7 @@ public class AccountController {
         return ResponseEntity.status(HttpStatus.CREATED).body(accountService.createAccount(createDTO));
     }
 
-    // lists the caller's accounts, so a client can discover the numbers the other routes need
+    // lists the caller's accounts
     @GetMapping
     public ResponseEntity<List<AccountResponseDTO>> getMyAccounts() {
         return ResponseEntity.ok(accountService.getMyAccounts());
@@ -41,6 +42,19 @@ public class AccountController {
     @GetMapping("/{accountNumber}")
     public ResponseEntity<AccountResponseDTO> getMyAccount(@PathVariable String accountNumber) {
         return ResponseEntity.ok(accountService.getMyAccount(accountNumber));
+    }
+
+    // simulated way to get money
+    @PostMapping("/{accountNumber}/deposit")
+    public ResponseEntity<AccountResponseDTO> deposit(@Valid @RequestBody CashRequestDTO cashDTO,
+                                                      @PathVariable String accountNumber) {
+        return ResponseEntity.ok(accountService.deposit(cashDTO, accountNumber));
+    }
+
+    @PostMapping("/{accountNumber}/withdraw")
+    public ResponseEntity<AccountResponseDTO> withdraw(@Valid @RequestBody CashRequestDTO cashDTO,
+                                                       @PathVariable String accountNumber) {
+        return ResponseEntity.ok(accountService.withdraw(cashDTO, accountNumber));
     }
 
     @DeleteMapping("/{accountNumber}")

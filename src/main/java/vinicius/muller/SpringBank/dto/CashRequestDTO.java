@@ -4,13 +4,10 @@ import jakarta.validation.constraints.*;
 
 import java.math.BigDecimal;
 
-public record TransferRequestDTO(
-        @NotBlank
-        @Pattern(regexp = "\\d{6}", message = "Receiver account number must be 6 digits")
-        String receiverAccountNumber,
-
+// serves both deposit and withdraw
+public record CashRequestDTO(
         @NotNull
-        @DecimalMin(value = "0.01", message = "Transfer value must be at least 0.01")
+        @DecimalMin(value = "0.01", message = "Value must be at least 0.01")
         @Digits(integer = 13, fraction = 2) // matches DECIMAL(15,2)
         BigDecimal value,
 

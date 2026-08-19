@@ -41,7 +41,7 @@ class TransferServiceTest {
 
     private static final String SENDER_NUMBER = "100001";
     private static final String RECEIVER_NUMBER = "900002";
-    private static final String PIN = "4821";
+    private static final String PIN = "482193";
 
     private AccountRepository accountRepository;
     private TransferRepository transferRepository;
@@ -76,7 +76,7 @@ class TransferServiceTest {
         receiverAccount.setId(20L);
         receiverAccount.setUser(receiver);
         receiverAccount.setAccountNumber(RECEIVER_NUMBER);
-        receiverAccount.setPinHash(pinEncoder.encode("0000"));
+        receiverAccount.setPinHash(pinEncoder.encode("000000"));
         receiverAccount.setBalance(new BigDecimal("5.00"));
 
         when(accountRepository.findByAccountNumberForUpdate(SENDER_NUMBER))
@@ -157,7 +157,7 @@ class TransferServiceTest {
     @Test
     void rejectsWrongPin() {
         assertThatThrownBy(() -> transferService.createTransfer(
-                request(RECEIVER_NUMBER, "30.00", "9999"), SENDER_NUMBER))
+                request(RECEIVER_NUMBER, "30.00", "999999"), SENDER_NUMBER))
                 .isInstanceOf(InvalidAccountCredentialsException.class);
 
         assertNothingMoved();

@@ -11,6 +11,7 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.util.ReflectionTestUtils;
 import vinicius.muller.SpringBank.dto.UpdateCredentialsRequestDTO;
+import vinicius.muller.SpringBank.dto.RegisterRequestDTO;
 import vinicius.muller.SpringBank.exception.AlreadyRegisteredException;
 import vinicius.muller.SpringBank.exception.IncorrectCredentialsException;
 import vinicius.muller.SpringBank.exception.UserNotFoundByEmail;
@@ -186,5 +187,19 @@ class AuthServiceTest {
 
         assertThatThrownBy(() -> authService.updateCredentials(request))
                 .isInstanceOf(UserNotFoundByEmail.class);
+    }
+
+    // users.username is UNIQUE - unguarded this escaped as a 500 instead of a 409
+    @Test
+    void rejectsRegistrationWithAnAlreadyTakenUsername() {
+        when(userRepository.existsByEmail("fresh@springbank.dev")).thenReturn(false);
+        when(userRepository.existsByUsername("taken")).thenReturn(true);
+
+        var request = new RegisterRequestDTO("taken", "fresh@springbank.dev", "password123");
+
+        assertThatThrownBy(() -> authService.registerUser(request))
+                .isInstanceOf(AlreadyRegisteredException.class);
+
+        verify(userRepository, never()).save(any(User.class));
     }
 }
