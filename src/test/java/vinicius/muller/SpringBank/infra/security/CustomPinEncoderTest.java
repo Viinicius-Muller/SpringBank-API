@@ -21,7 +21,6 @@ class CustomPinEncoderTest {
         encoder = newEncoder(PEPPER);
     }
 
-    // Cost factor 4 keeps the suite fast; production uses SecurityConfig.PIN_ENCODER_STRENGTH
     private CustomPinEncoder newEncoder(String pepper) {
         return new CustomPinEncoder(new BCryptPasswordEncoder(4), pepper);
     }
@@ -36,7 +35,6 @@ class CustomPinEncoderTest {
         assertFalse(encoder.matches("111111", encoder.encode(PIN)));
     }
 
-    // The point of the pepper: without the secret, a leaked hash cannot be attacked offline
     @Test
     void rejectsTheRightPinUnderADifferentPepper() {
         String encoded = newEncoder("a-completely-different-pepper").encode(PIN);

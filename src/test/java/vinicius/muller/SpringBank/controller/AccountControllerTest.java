@@ -39,9 +39,6 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-// SecurityConfig is excluded for the same reason as in AuthControllerTest - @WebMvcTest would
-// otherwise build the real filter chain. addFilters = false means these tests prove the mapping
-// and the status mapping, NOT that /accounts is protected.
 @WebMvcTest(controllers = AccountController.class,
         excludeFilters = @ComponentScan.Filter(
                 type = FilterType.ASSIGNABLE_TYPE, classes = SecurityConfig.class))
@@ -181,8 +178,6 @@ class AccountControllerTest {
     private String json(Object body) throws Exception {
         return objectMapper.writeValueAsString(body);
     }
-
-    // --- deposit / withdraw ---
 
     private static final AccountResponseDTO FUNDED =
             new AccountResponseDTO(10L, ACCOUNT_NUMBER, USERNAME, EMAIL, new BigDecimal("100.00"), true);

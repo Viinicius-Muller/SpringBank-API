@@ -38,8 +38,6 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-// SecurityConfig is excluded for the same reason as in AccountControllerTest - addFilters = false
-// means these tests prove the mapping and the paging defaults, NOT that /transfers is protected.
 @WebMvcTest(controllers = TransferController.class,
         excludeFilters = @ComponentScan.Filter(
                 type = FilterType.ASSIGNABLE_TYPE, classes = SecurityConfig.class))
@@ -68,7 +66,6 @@ class TransferControllerTest {
         when(serviceCall(path, any(Pageable.class))).thenReturn(page);
     }
 
-    // routes the stub/verify to the service method behind the given path
     private PageResponseDTO<TransferResponseDTO> serviceCall(String path, Pageable pageable) {
         return switch (path) {
             case SENT -> transferService.getMySentTransfers(pageable, eq(ACCOUNT_NUMBER));
@@ -154,7 +151,6 @@ class TransferControllerTest {
         verify(transferService, never()).getMyTransfers(any(Pageable.class), eq(ACCOUNT_NUMBER));
     }
 
-    // the path account is the sender, so it must reach the service alongside the body
     @Test
     void createsTransferFromThePathAccount() throws Exception {
         when(transferService.createTransfer(any(TransferRequestDTO.class), eq(ACCOUNT_NUMBER)))

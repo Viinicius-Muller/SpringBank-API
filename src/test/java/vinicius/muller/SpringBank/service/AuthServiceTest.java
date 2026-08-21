@@ -127,7 +127,6 @@ class AuthServiceTest {
                 .isInstanceOf(AlreadyRegisteredException.class);
     }
 
-    // Resubmitting your own unchanged values must not collide with yourself
     @Test
     void allowsResubmittingOwnUsernameAndEmail() {
         var request = new UpdateCredentialsRequestDTO(PASSWORD, USERNAME, EMAIL, "n3w-password");
@@ -162,7 +161,6 @@ class AuthServiceTest {
         verify(userRepository, never()).save(any(User.class));
     }
 
-    // The account comes from the token, so naming someone else in the body changes nothing
     @Test
     void cannotTargetAnotherAccountThroughTheRequest() {
         when(userRepository.existsByEmail("victim@springbank.dev")).thenReturn(false);
@@ -189,7 +187,6 @@ class AuthServiceTest {
                 .isInstanceOf(UserNotFoundByEmail.class);
     }
 
-    // users.username is UNIQUE - unguarded this escaped as a 500 instead of a 409
     @Test
     void rejectsRegistrationWithAnAlreadyTakenUsername() {
         when(userRepository.existsByEmail("fresh@springbank.dev")).thenReturn(false);

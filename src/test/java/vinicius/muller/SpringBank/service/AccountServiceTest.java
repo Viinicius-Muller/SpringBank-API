@@ -113,7 +113,6 @@ class AccountServiceTest {
         assertThat(response.active()).isTrue();
     }
 
-    // the number is deliberately not user-prefixed - it draws from the full 6-digit space
     @Test
     void createsSixDigitAccountNumberIndependentOfUserId() {
         authenticateAs(otherUser());
@@ -134,7 +133,6 @@ class AccountServiceTest {
         assertThat(passwordEncoder.matches(PIN, saved.getValue().getPinHash())).isTrue();
     }
 
-    // the retry loop used to keep saving after it had already succeeded
     @Test
     void savesOnlyOncePerCreatedAccount() {
         accountService.createAccount(new CreateAccountRequestDTO(PIN));
@@ -142,8 +140,6 @@ class AccountServiceTest {
         verify(accountRepository).saveAndFlush(any(Account.class));
     }
 
-    // A taken number is skipped before the insert. Catching the unique violation instead
-    // could never work: on Postgres it aborts the transaction, so the retry save fails too.
     @Test
     void skipsGeneratedAccountNumberThatIsAlreadyTaken() {
         when(accountRepository.existsByAccountNumber(anyString()))
@@ -261,8 +257,6 @@ class AccountServiceTest {
                 .isInstanceOf(IncorrectCredentialsException.class);
     }
 
-    // --- deposit / withdraw: the only path that puts money into an account ---
-
     private void lockable() {
         when(accountRepository.findByAccountNumberForUpdate(ACCOUNT_NUMBER)).thenReturn(Optional.of(account));
     }
@@ -362,7 +356,6 @@ class AccountServiceTest {
                 .isInstanceOf(AccountNotFoundException.class);
     }
 
-    // must take the row lock, otherwise two concurrent writers could both read the old balance
     @Test
     void cashOperationsLockTheAccountRow() {
         account.setBalance(new BigDecimal("100.00"));

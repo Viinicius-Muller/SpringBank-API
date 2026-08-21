@@ -29,12 +29,6 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-// SecurityConfig is excluded because @WebMvcTest would otherwise try to build the real
-// filter chain, which needs TokenService, UserRepository and the two REST handlers.
-//
-// addFilters = false means these tests prove the mapping exists at a given path, NOT that
-// PATCH /auth/credentials is protected - the filter chain rule is covered by SecurityFilterTest
-// and by the anonymous/no-auth cases in AuthServiceTest.
 @WebMvcTest(controllers = AuthController.class,
         excludeFilters = @ComponentScan.Filter(
                 type = FilterType.ASSIGNABLE_TYPE, classes = SecurityConfig.class))
@@ -102,7 +96,6 @@ class AuthControllerTest {
                 .andExpect(jsonPath("$.token").value(TOKEN));
     }
 
-    // The vague wording matters - it must not leak whether the e-mail exists
     @Test
     void loginReturnsUnauthorizedOnBadCredentials() throws Exception {
         when(authService.loginUser(any(LoginRequestDTO.class)))

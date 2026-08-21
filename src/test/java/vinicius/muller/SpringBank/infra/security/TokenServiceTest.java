@@ -51,9 +51,6 @@ class TokenServiceTest {
     @Test
     void rejectsTamperedToken() {
         String token = tokenService.generateToken(user);
-        // Flip a character in the middle of the signature. The final base64url character only
-        // carries padding bits, so flipping *that* one can decode to the same signature and
-        // leave the token valid - which made this test intermittently fail.
         int signatureStart = token.lastIndexOf('.') + 1;
         int target = signatureStart + (token.length() - signatureStart) / 2;
         char at = token.charAt(target);

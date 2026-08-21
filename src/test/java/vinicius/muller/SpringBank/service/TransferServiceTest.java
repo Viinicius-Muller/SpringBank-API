@@ -122,7 +122,6 @@ class TransferServiceTest {
 
     @Test
     void locksLowerAccountNumberFirstEvenWhenItIsTheReceiver() {
-        // sender "900002" -> receiver "100001": the receiver must be locked first
         senderAccount.setAccountNumber(RECEIVER_NUMBER);
         receiverAccount.setAccountNumber(SENDER_NUMBER);
         when(accountRepository.findByAccountNumberForUpdate(RECEIVER_NUMBER))
@@ -220,8 +219,6 @@ class TransferServiceTest {
 
         assertNothingMoved();
     }
-
-    // ---- statement reads ----
 
     private static final Pageable PAGE = PageRequest.of(0, 10);
 

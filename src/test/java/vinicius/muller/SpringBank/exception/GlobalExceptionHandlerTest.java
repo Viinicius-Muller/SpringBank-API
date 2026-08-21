@@ -55,7 +55,6 @@ class GlobalExceptionHandlerTest {
         assertThat(errorsOf(detail)).containsOnlyKeys("username", "email", "password");
     }
 
-    // The @AssertTrue getter on the record has no matching field, so it must still be reported
     @Test
     void reportsAssertTrueGetterViolation() {
         var invalid = new UpdateCredentialsRequestDTO("current-password", null, null, null);
@@ -66,7 +65,6 @@ class GlobalExceptionHandlerTest {
                 .containsEntry("anyChangeRequested", "At least one new credential must be provided");
     }
 
-    // Two constraints on one field must merge rather than blow up building the map
     @Test
     void mergesMultipleViolationsOnTheSameField() {
         var invalid = new RegisterRequestDTO("valid-name", "  ", "valid-password");
@@ -103,8 +101,6 @@ class GlobalExceptionHandlerTest {
     @SuppressWarnings("unused")
     private void stub(Object body) {
     }
-
-    // These used to fall through to the Exception catch-all and surface as 500s
 
     @Test
     void reportsMalformedBodyAsBadRequest() {
