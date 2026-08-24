@@ -1,5 +1,7 @@
 package vinicius.muller.SpringBank.controller;
 
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Pageable;
@@ -21,6 +23,7 @@ import vinicius.muller.SpringBank.service.TransferService;
 
 @RestController
 @RequestMapping("/transfers")
+@Tag(name = "Transfers", description = "Transfers between accounts and paginated statements")
 @RequiredArgsConstructor
 @PreAuthorize("hasRole('MEMBER')")
 public class TransferController {
@@ -28,6 +31,7 @@ public class TransferController {
     private final TransferService transferService;
 
     // sender account comes from the path, since a user may hold many accounts
+    @Operation(summary = "Transfer money from the given account to another")
     @PostMapping("/{accountNumber}")
     public ResponseEntity<TransferResponseDTO> create(@Valid @RequestBody TransferRequestDTO transferDTO,
                                                       @PathVariable String accountNumber) {
@@ -35,6 +39,7 @@ public class TransferController {
                 .body(transferService.createTransfer(transferDTO, accountNumber));
     }
 
+    @Operation(summary = "Statement: transfers sent and received by the account")
     @GetMapping("/me/{accountNumber}")
     public ResponseEntity<PageResponseDTO<TransferResponseDTO>> getMyTransfers(
             @PageableDefault(size = 10, sort = "transferDateTime", direction = Sort.Direction.DESC)
@@ -43,6 +48,7 @@ public class TransferController {
         return ResponseEntity.ok(transferService.getMyTransfers(pageable, accountNumber));
     }
 
+    @Operation(summary = "Statement: transfers sent by the account")
     @GetMapping("/me/{accountNumber}/sent")
     public ResponseEntity<PageResponseDTO<TransferResponseDTO>> getMySentTransfers(
             @PageableDefault(size = 10, sort = "transferDateTime", direction = Sort.Direction.DESC)
@@ -51,6 +57,7 @@ public class TransferController {
         return ResponseEntity.ok(transferService.getMySentTransfers(pageable, accountNumber));
     }
 
+    @Operation(summary = "Statement: transfers received by the account")
     @GetMapping("/me/{accountNumber}/received")
     public ResponseEntity<PageResponseDTO<TransferResponseDTO>> getMyReceivedTransfers(
             @PageableDefault(size = 10, sort = "transferDateTime", direction = Sort.Direction.DESC)

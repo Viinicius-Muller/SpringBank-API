@@ -13,6 +13,7 @@ row-locked database transaction, and every account is reachable only by its owne
 - Deposit, withdraw and transfer, all guarded by a per-account PIN
 - Paginated statement per account: everything, sent only, or received only
 - RFC 7807 `ProblemDetail` responses for every error path
+- Swagger UI, with the JWT wired into the *Authorize* button
 - Flyway-owned schema validated against the entities at startup
 
 ## Why It's Built This Way
@@ -58,6 +59,7 @@ never recover — the `UNIQUE` constraint is the real guarantee, and its residua
 - Spring Data JPA / Hibernate
 - PostgreSQL + Flyway
 - Jakarta Bean Validation
+- springdoc-openapi 3.1.0 (Swagger UI)
 - Lombok
 - Maven (wrapper included)
 
@@ -94,6 +96,16 @@ never recover — the `UNIQUE` constraint is the real guarantee, and its residua
 
    Flyway applies `V1`–`V5` on first boot. The app starts on `http://localhost:8080`, or whatever
    `PORT` says.
+
+4. Open the API docs at `http://localhost:8080/swagger-ui.html`.
+
+## API Docs
+
+Swagger UI lives at `/swagger-ui.html` and the raw OpenAPI document at `/v3/api-docs`; both are
+public, everything else still needs a token. To call a protected endpoint from the UI, take the
+`token` from `POST /auth/register` or `POST /auth/login`, paste it into **Authorize**, and it is sent
+as `Authorization: Bearer …` on every request — `register` and `login` are the only operations marked
+as needing no token.
 
 ## Usage
 
@@ -232,5 +244,6 @@ Personal learning project, not production-ready:
   the statement shows transfers only and a balance cannot be re-derived from the ledger
 - `created_by` / `updated_by` stay null — auditing is enabled, but there is no `AuditorAware` bean
 - No rate limiting, no CI
+- Swagger UI is exposed unauthenticated, which is fine locally and not beyond that
 
 Repository: [Viinicius-Muller/SpringBank-API](https://github.com/Viinicius-Muller/SpringBank-API)

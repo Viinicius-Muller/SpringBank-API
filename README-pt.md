@@ -13,6 +13,7 @@ transação de banco protegida por PIN e por lock de linha, e cada conta só é 
 - Depósito, saque e transferência, todos protegidos por um PIN por conta
 - Extrato paginado por conta: tudo, apenas enviadas ou apenas recebidas
 - Respostas de erro em RFC 7807 (`ProblemDetail`) em todos os caminhos
+- Swagger UI, com o JWT ligado ao botão *Authorize*
 - Schema controlado pelo Flyway e validado contra as entidades na inicialização
 
 ## Por Que Foi Feito Assim
@@ -58,6 +59,7 @@ residual aparece como `409`.
 - Spring Data JPA / Hibernate
 - PostgreSQL + Flyway
 - Jakarta Bean Validation
+- springdoc-openapi 3.1.0 (Swagger UI)
 - Lombok
 - Maven (com wrapper)
 
@@ -94,6 +96,16 @@ residual aparece como `409`.
 
    O Flyway aplica de `V1` a `V5` no primeiro boot. A aplicação sobe em `http://localhost:8080`, ou
    no que estiver em `PORT`.
+
+4. Abra a documentação da API em `http://localhost:8080/swagger-ui.html`.
+
+## Documentação da API
+
+O Swagger UI fica em `/swagger-ui.html` e o documento OpenAPI cru em `/v3/api-docs`; os dois são
+públicos, todo o resto continua exigindo token. Para chamar um endpoint protegido pela UI, pegue o
+`token` do `POST /auth/register` ou do `POST /auth/login`, cole no **Authorize**, e ele passa a ir
+como `Authorization: Bearer …` em toda requisição — `register` e `login` são as únicas operações
+marcadas como dispensando token.
 
 ## Uso
 
@@ -234,5 +246,6 @@ Projeto pessoal de estudo, não é pronto para produção:
 - `created_by` / `updated_by` continuam nulos — a auditoria está ligada, mas não existe um bean
   `AuditorAware`
 - Sem rate limiting e sem CI
+- O Swagger UI fica exposto sem autenticação, o que serve para desenvolvimento local e nada além
 
 Repositório: [Viinicius-Muller/SpringBank-API](https://github.com/Viinicius-Muller/SpringBank-API)
